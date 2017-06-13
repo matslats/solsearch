@@ -20,6 +20,7 @@ SET time_zone = "+00:00";
 
 CREATE TABLE IF NOT EXISTS `ads` (
   `id` int(7) NOT NULL,
+  `type` varchar(12) NOT NULL 
   `title` tinytext NOT NULL,
   `body` text NOT NULL,
   `keywords` tinytext NOT NULL,
@@ -32,6 +33,7 @@ CREATE TABLE IF NOT EXISTS `ads` (
   `lon` float(8,5) NOT NULL,
   `expires` int(14) NOT NULL COMMENT 'unixtime',
   `path` varchar(32) NOT NULL
+  `client_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 --

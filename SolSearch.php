@@ -1,14 +1,31 @@
 <?php
 
-namespace Drupal\smallads_index;
+require 'SolSearchInterface.php';
 
-class SolSearch implements \Drupal\smallads_index\SolSearchInterface {
+/**
+ * Example
+{
+  "uuid": "9328cchql09238374ncis73",
+  "title": "Mind adventures",
+  "body": "litle bit of escaped <strong>html</strong>",
+  "keywords":  "blah, blue, blow",
+  "location": "60,1"
+  "scope": "2"
+  "path": "node/99",
+  "directexchange": "true",
+  "indirectexchange": "true",
+  "money": "false",
+  "expires": 15000000000
+}
+ */
+
+class SolSearch implements SolSearchInterface {
 
   /**
    * The API key of the group
    * @var string
    */
-  private $groupUuid;
+  private $groupId;
 
   /**
    * The database connection
@@ -16,33 +33,36 @@ class SolSearch implements \Drupal\smallads_index\SolSearchInterface {
    */
   private $connection;
 
-  function __construct($group_uuid, $connection) {
-    $this->groupUuid = $group_uuid;
-    $this->connection = $connection;
-  }
-
   /**
    * the type, e.g. offer, want
    */
   private $type;
 
-  function init($type) {
+  function __construct($connection, $client, $type) {
+    $this->connection = $connection;
+    $this->groupId = $client->id;
     $this->type = $type;
   }
+
 
   /**
    * Filter the database and return the results
    */
-  public function filter($params) {
-
+  public function filter($params, $sort_by = 'radius', $dir = 'ASC') {
+    $query = "SELECT * FROM ads WHERE type = '".$params['type']."'";
+    $result = mysql_query($query, $this->connection);
+    while ($row = mysql_fetch_object($result)) {
+      $output[] = $row;
+    }
+    return $output;
   }
 
   /**
    * Preload the database with a lot of existing ads
    */
-  public function bulkUpsert(array $ads) {
+  public function bulkUpsert(stdClass $ads) {
      foreach ($ads as $ad) {
-       $this->validateSolAd($ad);
+       $this->upsert($ad);
      }
   }
 
@@ -54,11 +74,23 @@ class SolSearch implements \Drupal\smallads_index\SolSearchInterface {
   }
 
   /**
+   * Delete many ads from the database
+   */
+  public function delete($uuid) {
+    mysql_query("DELETE FROM ads WHERE uuid = '$uuid'");
+  }
+
+  /**
    * Update a single ad
    */
-  public function upsert(SolAd $ad) {
-     $this->validateSolAd($ad);
+  public function upsert($type, stdClass $ad) {
+    $this->validateSolAd($ad);
+    $this->delete($ad->uuid);
+    list($lat, $lon) = explode(',', $ad->location);print_R($ad);
+    $query = "INSERT INTO ads (`type`, `title`, `body`, `keywords`, `directexchange`, `indirectexchange`, `money`, `scope`, `uuid`, `lat`, `lon`, `expires`, `path`, `client_id`)
+      VALUES ('$type', '$ad->title', '$ad->body', '$ad->keywords', '$ad->directexchange', '$ad->indirectexchange', '$ad->money', '$ad->scope', '$ad->uuid', '$lat', '$lon', '$ad->expires', '$ad->path', '$this->groupId')";
 
+    mysql_query($query, $this->connection);
   }
 
   /**
@@ -78,7 +110,7 @@ class SolSearch implements \Drupal\smallads_index\SolSearchInterface {
    * expiry (when the scope goes to zero)
    * url
    */
-  private function validateSolAd(SolAd $ad) {
+  private function validateSolAd(stdClass $ad) {
     //check the format of UUID - what is the name of that format?
 
     //$title is max 100 chars
@@ -92,25 +124,21 @@ class SolSearch implements \Drupal\smallads_index\SolSearchInterface {
     if (empty($ad->location['lat']) or empty($ad->location['lon'])) {
       $messages[] = 'Lat and Lon MUST be populated.';
     }
-    if ($ad->location['lat'] > 90 or $ad->location['lat'] < -90) {
+    list($lat, $lon) = explode(',', $ad->location);
+    if ($lat > 90 or $lat < -90) {
       throw new exception('Latitude out of range. should be -90 < 90');
     }
-    if ($ad->location['lat'] > 180 or $ad->location['lat'] < -180) {
+    if ($lon > 180 or $lon < -180) {
       throw new exception('Longitude out of range. should be -180 < 180');
     }
     if (!is_numeric($ad->scope) or $ad->scope < 0 or $ad->scope > 3) {
       throw new exception('Scope out of range. should be a number from 0-3');
     }
     $limit = strtotime('+1 year');
-    if ($ad->expiry > $limit + 86400) {//a year and a day
-      $ad->expiry = strtotime('+1 year');
+    if ($ad->expires > $limit + 86400) {//a year and a day
+      $ad->expires = strtotime('+1 year');
       $messages[] = 'Expiry has been curtailed to 1 year hence';
     }
-    //get a REGEX for url parsing.
-    if (!preg_match('/\.[az]{2}^/', $ad->url)) {
-      throw new exception('Not a valid url');
-    }
-    $ad->url = str_replace(array('http://', 'https://'), array('', ''), $ad->url);
   }
 
 
@@ -122,8 +150,14 @@ class SolSearch implements \Drupal\smallads_index\SolSearchInterface {
    * @param string $url
    * @param string $name
    */
-  public function addClient($apikey, $url, $name) {
-
+  public function insertClient($url, $name) {
+    $apikey = $this->makeAPIkey();
+    $result = mysql_query(
+      "INSERT INTO clients (apikey, name, url) VALUES ('$apikey', '$name', '$url')",
+      $this->connection
+    );
+    //$client = mysql_fetch_object($result);
+    return $apikey;
   }
 
   /**
@@ -131,20 +165,38 @@ class SolSearch implements \Drupal\smallads_index\SolSearchInterface {
    *
    * @param string $apikey
    */
-  public function deleteClient($apikey) {
-
+  public function deleteClient($ud) {
+     mysql_query("DELETE FROM clients WHERE id = '$id'", $this->connection);
+     mysql_query("DELETE FROM ads WHERE client_id = '$idd'", $this->connection);
   }
 
   /**
    * Admin only. Update a client's name or url
    */
-  public function updateClient($apikey, $url, $name) {
-
+  public function updateClient($id, $name, $url) {
+    $query = "UPDATE clients SET url = '$url', name = '$name' WHERE id = '$id'";
+    mysql_query($query, $this->connection);
   }
 
 
   public function listCLients() {
-
+    $result = mysql_query(
+      "SELECT c.id, c.name, c.url FROM clients c LEFT JOIN ads a ON c.id = a.client_id GROUP BY c.id, a.type",
+      $this->connection
+    );
+    while ($item = mysql_fetch_object($result)) {
+      $table[] = $item;
+    }
+    return $table;
   }
 
+  private function makeAPIkey() {
+    $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    $randstring = '';
+    for ($i=0; $i<12; $i++) {
+      $randstring .= $characters[rand(0, strlen($characters))];
+    }
+    return $randstring;
+
+  }
 }
