@@ -26,6 +26,8 @@ interface SolSearchInterface {
   /**
    * Filter the database and return the results
    *
+   * @param string $type
+   *   One of a few mutually exlcusive types e.g. offer/want
    * @param array $params
    *   the filters to apply to the search, namely
    * - bool local: true to include only local results
@@ -34,55 +36,44 @@ interface SolSearchInterface {
    * - bool directexchange: TRUE to exclude transactionts that don't allow barter
    * - bool indirectexchange: TRUE to exclude transactions that don't allow ccs
    * - bool money: TRUE to exclude transactions that don't allow money
-   *
+   * @param int $limit
+   * @param int $offset
    * @param string $sort_by
+   * @param string $dir
    *
    * @return array
-   *   a list of the
+   *   a list of the items
    */
-  public function filter($params, $sort_by = 'radius', $dir = 'ASC');
+  public function filter($type, $params, $offset = 0, $limit = 10, $sort_by = 'expires,asc');
 
   /**
-   * Preload the database with a lot of existing ads
-   *
-   * @param stdClass[] $ad
-   *   The object to be added, including a UUID
-   *
-   * @return bool
-   *   TRUE if the addition was successful.
-   */
-  public function bulkUpsert(stdClass $ads);
-
-  /**
-   * Delete many ads from the database
-   *
-   * @param string[] $uuids
-   *
-   * @return bool
-   *   TRUE if the deletion was successful.
-   */
-  public function bulkDelete(array $uuids);
-
-  /**
-   * Update a single ad
+   * Update one or more ads.
    *
    * @param string $type
    *   The 'type' property
-   * @param stdClass $ad
-   *   The object to be added
+   * @param stdClass[] $ads
    *
    * @return bool
    *   TRUE if the update was successful
    */
-  public function upsert($type, stdClass $ad);
+  public function upsert($type, array $ads);
 
+  /**
+   * Delete one or more ads.
+   *
+   * @param string[] $uuids
+   *
+   * @return bool
+   *   TRUE if the update was successful
+   */
+  public function delete(array $uuids);
 
   /**
    * Admin only. Add a new group to the database. This must be done before any
    * of that groups ads are added. Admin only.
    *
    * @param string $url
-   * @param string $name\
+   * @param string $name
    *
    * @return string
    *   The new API Key
@@ -104,7 +95,15 @@ interface SolSearchInterface {
 
   /**
    * Admin only. Show a list of all the connected clients;
+   *
+   * @return array
    */
   public function listCLients();
 
+  /**
+   * Get the types which are in use
+   *
+   * @return array
+   */
+  public function getTypes();
 }

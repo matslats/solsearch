@@ -2,7 +2,7 @@
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET time_zone = "+00:00";
 
-
+/* MyISAM tables support Spatial indexes */
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
@@ -12,11 +12,14 @@ SET time_zone = "+00:00";
 -- Database: `solsearch`
 --
 
--- --------------------------------------------------------
 
---
--- Table structure for table `ads`
---
+CREATE TABLE IF NOT EXISTS `clients` (
+  `id` int(11) NOT NULL,
+  `url` varchar(32) NOT NULL,
+  `name` tinytext NOT NULL,
+  `apikey` varchar(32) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
 
 CREATE TABLE IF NOT EXISTS `ads` (
   `id` int(7) NOT NULL,
@@ -32,29 +35,28 @@ CREATE TABLE IF NOT EXISTS `ads` (
   `lat` float(7,5) NOT NULL,
   `lon` float(8,5) NOT NULL,
   `expires` int(14) NOT NULL COMMENT 'unixtime',
-  `path` varchar(32) NOT NULL
-  `client_id` int(11) NOT NULL
+  `path` varchar(32) NOT NULL,
+  `client_id` int(11) NOT NULL,
+  `image_path` VARCHAR(128) NULL DEFAULT NULL 
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+create DEFINER = CURRENT_USER function harvesine (lat1 double, lon1 double, lat2 double, lon2 double) returns double
+ return  3956 * 2 * ASIN(SQRT(POWER(SIN((lat1 - abs(lat2)) * pi()/180 / 2), 2) 
+         + COS(abs(lat1) * pi()/180 ) * COS(abs(lat2) * pi()/180) * POWER(SIN((lon1 - lon2) * pi()/180 / 2), 2) )
 
 --
 -- Indexes for dumped tables
 --
-
---
--- Indexes for table `ads`
---
 ALTER TABLE `ads`
   ADD PRIMARY KEY (`id`);
 
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `ads`
---
 ALTER TABLE `ads`
   MODIFY `id` int(7) NOT NULL AUTO_INCREMENT;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+  
+
+CREATE TABLE IF NOT EXISTS `log` (
+  `id` int(11) NOT NULL,
+  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `message` text NOT NULL,
+  `client_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
