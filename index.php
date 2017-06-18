@@ -3,6 +3,7 @@ use \Psr\Http\Message\ServerRequestInterface as Request;
 use \Psr\Http\Message\ResponseInterface as Response;
 
 require 'vendor/autoload.php';
+require 'SolSearch.php';
 
 // Instatiate PDO database connection
 
@@ -12,7 +13,6 @@ $dbh = connectPdo($dbConfig);
 // Instantiate the SolSearch service
 
 $solSearch = new SolSearch($dbh, "", "");
-
 
 // Define API
 
