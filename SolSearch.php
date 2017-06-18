@@ -10,7 +10,7 @@ require 'SolSearchInterface.php';
   "body": "litle bit of escaped <strong>html</strong>",
   "keywords":  "blah, blue, blow",
   "location": "60,1"
-  "scope": "2"
+  "scope": "3"
   "path": "node/99",
   "directexchange": "true",
   "indirectexchange": "true",
@@ -47,10 +47,68 @@ class SolSearch implements SolSearchInterface {
 
   /**
    * Filter the database and return the results
+   *
+   * @note Not currently possible to order by distance. Radius uses a box not a circle.
    */
-  public function filter($params, $sort_by = 'radius', $dir = 'ASC') {
-    $query = "SELECT * FROM ads WHERE type = '".$params['type']."'";
-    $result = mysql_query($query, $this->connection);
+  public function filter($type, $params, $offset = 0, $limit = 10, $sort_by = 'expires,asc') {
+    $query = "SELECT id, type, title, body, keywords, directexchange, indirectexchange, money, scope, uuid, expires, path, client_id, X(location) as lon, Y(location) as lat"
+        . " FROM ads WHERE type = '$type'";
+    if (!empty($params['fragment'])) {
+      $like = '%'. $params['fragment'] .'%';
+      $query .= " AND (title LIKE '$like' OR body LIKE '$like' or keywords LIKE '$like') ";
+    }
+    // scope 0 means unpublished and 1 means neighbourhood Neither supported here at the moment
+    $query .= " AND (scope = 4 OR (client_id = $this->groupId AND scope = 3)) ";
+
+    if (!empty($params['circle'])) {
+      list($lat, $lon, $radius) = explode(',', $params['circle']);
+      // MAKE AN box instead of filtering by radius.
+      $rlon1 = $lon-$radius/abs(cos(radians($lat))*111);
+      $rlon2 = $lon+$radius/abs(cos(radians($lat))*111);
+      $rlat1 = $lat-($radius/111);
+      $rlat2 = $lat+($radius/111);
+      $query .=  " AND st_within(shape, envelope(linestring(point($rlon1, $rlat1), point($rlon2, $rlat2))))";
+    }
+    $flags = array_keys(array_filter([
+      'directexchange' => @$params['directexchange'],
+      'indirectexchange' => @$params['indirectexchange'],
+      'money' => @$params['money']
+    ]));
+    if ($flags) {
+      foreach($flags as $key) {
+        $clause[] = " $key = 1";
+      }
+      $query .= ' AND ('.implode(' OR ', $clause).')';
+    }
+      // no flags means free things only.
+      //$query .= ' AND directexchange = 0 AND indirectexchange =0 AND money =0';
+    if (isset($params['directexchange']) and $params['directexchange'] == 0) {
+      $query .= ' AND directexchange = 0 ';
+    }
+    if (isset($params['indirectexchange']) and $params['indirectexchange'] == 0) {
+      $query .= ' AND indirectexchange = 0 ';
+    }
+    if (isset($params['money']) and $params['money'] == 0) {
+      $query .= ' AND money = 0 ';
+    }
+    //Sorting
+    list($field, $dir) = explode(',', $sort_by.',ASC');
+    if ($field == 'distance' and isset($params['circle'])) {
+      // Not yet supported, and not very necessary for map views
+    }
+    else {
+      $query .= " ORDER BY $field $dir";
+    }
+
+    if ($limit) {
+      $query .= " limit $limit";
+    }
+    if ($limit && $offset) {
+      $query .= ", $offset";
+    }
+    $result = $this->dbQuery($query);
+
+    $output = [];
     while ($row = mysql_fetch_object($result)) {
       $output[] = $row;
     }
@@ -58,39 +116,33 @@ class SolSearch implements SolSearchInterface {
   }
 
   /**
-   * Preload the database with a lot of existing ads
-   */
-  public function bulkUpsert(stdClass $ads) {
-     foreach ($ads as $ad) {
-       $this->upsert($ad);
-     }
-  }
-
-  /**
    * Delete many ads from the database
    */
-  public function bulkDelete(array $uuids) {
-
-  }
-
-  /**
-   * Delete many ads from the database
-   */
-  public function delete($uuid) {
-    mysql_query("DELETE FROM ads WHERE uuid = '$uuid'");
+  public function delete(array $uuids) {
+    foreach ($uuids as $uuid) {
+      $in[] = "'".$uuid."'";
+    }
+    $this->dbQuery("DELETE FROM ads WHERE uuid IN (".implode($in).")");
   }
 
   /**
    * Update a single ad
+   *
+   * @param string $type
+   * @param stdClass[] $ads
    */
-  public function upsert($type, stdClass $ad) {
-    $this->validateSolAd($ad);
-    $this->delete($ad->uuid);
-    list($lat, $lon) = explode(',', $ad->location);print_R($ad);
-    $query = "INSERT INTO ads (`type`, `title`, `body`, `keywords`, `directexchange`, `indirectexchange`, `money`, `scope`, `uuid`, `lat`, `lon`, `expires`, `path`, `client_id`)
-      VALUES ('$type', '$ad->title', '$ad->body', '$ad->keywords', '$ad->directexchange', '$ad->indirectexchange', '$ad->money', '$ad->scope', '$ad->uuid', '$lat', '$lon', '$ad->expires', '$ad->path', '$this->groupId')";
-
-    mysql_query($query, $this->connection);
+  public function upsert($type, array $ads) {
+    //todo check the uuid and either insert or update
+    foreach ($ads as $ad) {
+      $this->validateSolAd($ad);
+      list($lat, $lon) = explode(',', $ad->location);
+      $location = "ST_GeomFromText('POINT($lon $lat)')";
+      $query = "REPLACE INTO ads
+        (`uuid`, `type`, `title`, `body`, `keywords`, `image_path`, `directexchange`, `indirectexchange`, `money`, `scope`, `location`, `expires`, `path`, `client_id`)
+        VALUES ('$ad->uuid', '$type', '$ad->title', '$ad->body', '$ad->keywords', '$ad->image', '$ad->directexchange', '$ad->indirectexchange', '$ad->money', '$ad->scope', $location, '$ad->expires', '$ad->path', '$this->groupId')";
+      $this->dbQuery($query);
+      $this->log("inserted $uuid");
+    }
   }
 
   /**
@@ -100,30 +152,27 @@ class SolSearch implements SolSearchInterface {
    *
    * @throws Exception
    *
-   * UUID
-   * title
-   * body
-   * keywords
-   * language?
-   * location
-   * scope, integer from 0-3
-   * expiry (when the scope goes to zero)
-   * url
    */
   private function validateSolAd(stdClass $ad) {
+    //check all the fields exist
+    $fields = ['uuid', 'title', 'body', 'keywords', 'created', 'expires', 'location', 'directexchange', 'indirectexchange', 'money', 'path'];
+    foreach ($fields as $fieldname) {
+      if (!isset($ad->{$fieldname})) {
+        throw new \Exception("$fieldname not found on ad");
+      }
+    }
+    //
+    //
     //check the format of UUID - what is the name of that format?
 
     //$title is max 100 chars
-    if (strlen($ad->title) > 100) {
-      $ad->title = substr($ad->title, 0, 100);
+    if (strlen($ad->title) > 128) {
+      //We don't have a way to send warnings.
+      $ad->title = substr($ad->title, 0, 128);
     }
     //sanitise the body
 
-    //keywords should be comma separated alphanumeric
 
-    if (empty($ad->location['lat']) or empty($ad->location['lon'])) {
-      $messages[] = 'Lat and Lon MUST be populated.';
-    }
     list($lat, $lon) = explode(',', $ad->location);
     if ($lat > 90 or $lat < -90) {
       throw new exception('Latitude out of range. should be -90 < 90');
@@ -131,14 +180,18 @@ class SolSearch implements SolSearchInterface {
     if ($lon > 180 or $lon < -180) {
       throw new exception('Longitude out of range. should be -180 < 180');
     }
-    if (!is_numeric($ad->scope) or $ad->scope < 0 or $ad->scope > 3) {
-      throw new exception('Scope out of range. should be a number from 0-3');
+    if (!is_numeric($ad->scope) or $ad->scope < 3 or $ad->scope > 4) {
+      throw new exception('Scope out of range. should be a number from 3-4: '.$ad->scope);
     }
     $limit = strtotime('+1 year');
     if ($ad->expires > $limit + 86400) {//a year and a day
       $ad->expires = strtotime('+1 year');
       $messages[] = 'Expiry has been curtailed to 1 year hence';
     }
+
+    //put in the default group
+    $ad->group_id = $this->groupId;
+    $ad->type = $this->type;
   }
 
 
@@ -152,11 +205,7 @@ class SolSearch implements SolSearchInterface {
    */
   public function insertClient($url, $name) {
     $apikey = $this->makeAPIkey();
-    $result = mysql_query(
-      "INSERT INTO clients (apikey, name, url) VALUES ('$apikey', '$name', '$url')",
-      $this->connection
-    );
-    //$client = mysql_fetch_object($result);
+    $result = $this->dbQuery("INSERT INTO clients (apikey, name, url) VALUES ('$apikey', '$name', '$url')");
     return $apikey;
   }
 
@@ -165,9 +214,9 @@ class SolSearch implements SolSearchInterface {
    *
    * @param string $apikey
    */
-  public function deleteClient($ud) {
-     mysql_query("DELETE FROM clients WHERE id = '$id'", $this->connection);
-     mysql_query("DELETE FROM ads WHERE client_id = '$idd'", $this->connection);
+  public function deleteClient($id) {
+     $this->dbQuery("DELETE FROM clients WHERE id = '$id'");
+     $this->dbQuery("DELETE FROM ads WHERE client_id = '$idd'");
   }
 
   /**
@@ -175,14 +224,13 @@ class SolSearch implements SolSearchInterface {
    */
   public function updateClient($id, $name, $url) {
     $query = "UPDATE clients SET url = '$url', name = '$name' WHERE id = '$id'";
-    mysql_query($query, $this->connection);
+    $this->dbQuery($query);
   }
 
 
   public function listCLients() {
-    $result = mysql_query(
-      "SELECT c.id, c.name, c.url FROM clients c LEFT JOIN ads a ON c.id = a.client_id GROUP BY c.id, a.type",
-      $this->connection
+    $result = $this->dbQuery(
+      "SELECT c.id, c.name, c.url FROM clients c LEFT JOIN ads a ON c.id = a.client_id GROUP BY c.id, a.type"
     );
     while ($item = mysql_fetch_object($result)) {
       $table[] = $item;
@@ -197,6 +245,29 @@ class SolSearch implements SolSearchInterface {
       $randstring .= $characters[rand(0, strlen($characters))];
     }
     return $randstring;
+  }
 
+  private function dbQuery($sql) {
+    try {
+      $this->log($sql);
+      return mysql_query($sql, $this->connection);
+    }
+    catch(\Exception $e) {
+      throw $e;
+    }
+  }
+
+  public function log($message) {
+    $query = "INSERT INTO log (message, client_id) VALUES ('".addslashes($message)."', $this->groupId)";
+    mysql_query($query, $this->connection);
+  }
+
+  public function getTypes() {
+    $query = "SELECT type from ads GROUP BY type";
+    $result = $this->dbQuery($query);
+    while ($type = mysql_fetch_field($result)) {
+      $types[] = $type;
+    }
+    return $types;
   }
 }
