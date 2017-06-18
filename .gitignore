@@ -1,0 +1,10 @@
+.idea
+*.iml
+bin
+lib
+local
+*.pyc
+*.swp
+vendor
+composer.lock
+composer.phar

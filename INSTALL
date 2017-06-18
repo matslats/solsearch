@@ -1,0 +1,12 @@
+Install PHP Depedencies:
+
+- Install Composer if you don't have it:
+- https://getcomposer.org/doc/00-intro.md
+- Run the install command for composer. If you have a local composer installation this is:
+-- php composer.phar install
+- If you have a global install of composer you can do:
+-- composer install
+
+
+
+
