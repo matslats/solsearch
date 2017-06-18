@@ -6,11 +6,12 @@ Archtectural improvements
 - Look for libraries which probably do what you want to do already, e.g. 'php rest server library'
 - Do not write SQL yourself if you can avoid it at all, security is your main concern here because you are immediately open to SQL injection. A small middle layer like PDO at least santises all input.
 - Do not hard code connections to specific databases or database types (e.g. don't write for MySQL unless you absolutely have to). An abstraction layer like PDO allows you to drop in a new database type with nearly zero work (but you can not hard code SQL!!, which you shouldn't be doing anyway!!)
-- Code against a documented interface (i.e. docs), or code against a minimal implementation.
+- Write code 'top down' by defining documentation or TDD tests first, then fill in the blanks, try to keep everything always working. E.g. don't leave code in a state where there is a method for a database table that doesn't exist. Minimal or 'stub' implementations of functions are great because they work and are placeholders for something to be implemented later.
 - Never hard code configuration like 'define', if the natural place for this kind of stuff would be a separate configuration file. 1) SECURITY, 2) user friendliness - users need to be able to configure stuff without editing code. 3) version control, you version control system does not need to track changes to username/password
 
-Basic respect for other people who are going to read your code and your users:
+Basic respect for other people who are going to read your code and your users. **NO ONE WILL OR CAN WORK ON YOUR STUFF IF YOU DO NOT DO THIS**
 
-- Installation / COnfiguration / First Run instructions
+- Installation / Configuration / First Run instructions
 - COMMENT YOUR CODE
+- Don't commit broken SQL :( :(
 
