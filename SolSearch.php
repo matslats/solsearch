@@ -228,7 +228,7 @@ class SolSearch implements SolSearchInterface {
   }
 
 
-  public function listCLients() {
+  public function listClients() {
     $result = $this->dbQuery(
       "SELECT c.id, c.name, c.url FROM clients c LEFT JOIN ads a ON c.id = a.client_id GROUP BY c.id, a.type"
     );
@@ -250,9 +250,10 @@ class SolSearch implements SolSearchInterface {
   private function dbQuery($sql) {
     try {
       $this->log($sql);
-      return mysql_query($sql, $this->connection);
+      return $this->connection->query($sql);
     }
-    catch(\Exception $e) {
+    // @todo wat? why catch and then throw exception?
+    catch(PDOException $e) {
       throw $e;
     }
   }
