@@ -1,3 +1,10 @@
+Changelog
+
+- Renamed a bunch of stuff in the interface to make the interface extremely clear and allow for single insert/update/delete
+- Separated insert and update. Client may want to be sure that they are inserting new records OR updating existing ones and get feedback in the case of collision on insert or non existence on update
+- Removed getTypes call from API. Since this variable is specified in the API the types should have a hard dependency with the API version. 
+- Created an extended interface for admin functions so that interfaces can easily be coded against stuff which should have admin facilities and stuff that shouldn't
+
 Archtectural improvements
 
 

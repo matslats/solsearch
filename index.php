@@ -17,11 +17,17 @@ $solSearch = new SolSearch($dbh, "", "");
 // Define API
 
 $app = new \Slim\App;
-$app->get('/hello/{name}', function (Request $request, Response $response) {
-    $name = $request->getAttribute('name');
-    $response->getBody()->write("Hello, $name");
 
-    return $response;
+// READING
+
+// Clients Endpoint
+// If client ID specified, then get just that client, otherwise return all clients
+$app->get('/clients[/{clientId}]', function (Request $request, Response $response, $args) {
+    if (isset($args['clientId'])) {
+        return $response->withJson(array('name' => 'yes', 'foo' => 40));
+    } else {
+        return $response->withJson(array('name' => 'no', 'foo' => 40));
+    }
 });
 
 // Start API
