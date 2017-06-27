@@ -1,0 +1,403 @@
+swagger: '2.0'
+info:
+  description: Remote storage and filtering for groups' smallads
+  version: 1.0.0
+  title: Solsearch API
+  contact:
+    url: http://matslats.net/contact
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+# all paths will be relative to the basePath specified
+# basePath: /v1
+tags:
+- name: admin
+  description: Secured Admin-only calls
+schemes:
+- https
+paths:
+  /{type}:
+    get:
+      summary: Get a selection of ads
+      operationId: filterads
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: apikey
+        in: header
+        description: API key identifying and logging in
+        required: true
+        type: string
+      - name: type
+        in: path
+        description: the type of ad, e.g. offer, want
+        type: string
+        required: true
+      - name: limit
+        default: 10
+        in: query
+        description: number of results to return, defaults to 10
+        required: false
+        type: integer
+      - name: offset
+        default: 0
+        in: query
+        description: Position of first search result to show.
+        required: false
+        type: integer
+      - name: fragment
+        in: query
+        description: String on which to filter the transaction description
+        required: false
+        type: string
+      - name: circle
+        in: query
+        description: The circle around which to search (array of lat, lon, radius in km)
+        required: false
+        type: number
+        format: string
+      - name: sortby
+        in: query
+        description: "Fieldname to sort by from the list of transaction fields, optionally followed by a comma and asc or desc e.g. title,desc. Note special value: distance"
+        required: false
+        type: string
+      - name: directexchange
+        in: query
+        description: "Include ads where barter is expected"
+        required: false
+        type: boolean
+        default: true
+      - name: indirectexchange
+        in: query
+        description: "include ads where community currency is expected"
+        required: false
+        type: boolean
+        default: true
+      - name: money
+        in: query
+        description: "Include ads where money is equired"
+        required: false
+        type: boolean
+        default: true
+      - name: lang
+        in: query
+        description: "Filter using 2 letter language code"
+        required: false
+        type: string
+      responses:
+        200:
+          description: List of full ad objects
+          schema:
+            $ref: '#/definitions/Result'
+    options:
+      summary: A list of the ad types
+      operationId: listAdTypes
+      produces:
+      - application/json
+      responses:
+        200:
+          description: an array of type names
+  /{type}/{uuid}:
+    put:
+      summary: Insert or update an existing ad
+      operationId: upsertAd
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: apikey
+        in: header
+        description: API key identifying and logging in
+        required: true
+        type: string
+      - name: type
+        in: path
+        description: The unique ID of the client
+        required: true
+        type: string
+      - name: uuid
+        in: path
+        description: The unique ID of the client
+        required: true
+        type: string
+      - in: body
+        name: body
+        description: Ad object to be stored
+        required: true
+        schema:
+          $ref: '#/definitions/Ad'
+      responses:
+        400:
+          description: Invalid ID supplied
+        404:
+          description: Ad not found
+        405:
+          description: Validation exception
+    delete:
+      summary: Delete an ad
+      operationId: deleteAd
+      parameters:
+      - name: apikey
+        in: header
+        description: API key identifying and logging in
+        required: true
+        type: string
+      - name: uuid
+        in: path
+        description: The unique ID of the ad
+        required: true
+        type: integer
+      responses:
+        200:
+          description: no body
+  /client:
+    get:
+      summary: Get a list of all the groups
+      operationId: getClient
+      parameters:
+      - name: apikey
+        in: header
+        description: API key identifying and logging in
+        required: true
+        type: string
+      responses:
+        200:
+          description: List of registered clients with stats..
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Client'
+    post:
+      summary: Add a client
+      operationId: addClient
+      consumes: 
+        - application/json
+      parameters:
+      - name: apikey
+        in: header
+        description: API key identifying and logging in
+        required: true
+        type: string
+      - in: body
+        name: client
+        description: CLient to add
+        schema:
+          $ref: '#/definitions/Client'
+      responses:
+        201:
+          description: Successful addition
+  /client/{id}:
+    put:
+      summary: Edit a client
+      operationId: editClient
+      consumes: 
+        - application/json
+      parameters:
+      - name: apikey
+        in: header
+        description: API key identifying and logging in
+        required: true
+        type: string
+      - name: id
+        in: path
+        description: The unique ID of the client
+        required: true
+        type: integer
+      - in: body
+        name: transaction
+        description: Inventory item to add
+        schema:
+          $ref: '#/definitions/Client'
+      responses:
+        200:
+          description: The full transaction object
+          schema: 
+            $ref: '#/definitions/Ad'
+    delete:
+      summary: Delete a client
+      operationId: deleteClient
+      parameters:
+      - name: apikey
+        in: header
+        description: API key identifying and logging in
+        required: true
+        type: string
+      - name: id
+        in: path
+        description: The unique ID of the client
+        required: true
+        type: integer
+      responses:
+        200:
+          description: no body
+  /bulk/{type}:
+    post:
+      summary: upload many ads
+      operationId: bulkAdd
+      consumes: 
+        - application/json
+      parameters:
+      - name: apikey
+        in: header
+        description: API key identifying and logging in
+        required: true
+        type: string
+      - name: type
+        description: the typeof ad
+        in: path
+        type: string
+        required: true
+      - in: body
+        name: body
+        description: the ads to be uploaded
+        required: true
+        schema:
+          type: array
+          items:
+            $ref: '#/definitions/Ad'
+      responses:
+        200:
+          description: no body
+  /:
+    delete:
+      summary: delete many ads
+      operationId: bulkDelet
+      consumes: 
+        - application/json
+      parameters:
+      - name: apikey
+        in: header
+        description: API key identifying and logging in
+        required: true
+        type: string
+      - in: body
+        name: body
+        description: array of the uuids of the ads to be deleted
+        required: true
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        200:
+          description: no body
+  
+definitions:
+  Ad:
+    type: object
+    properties:
+      id:
+        type: integer
+        format: int64
+        description: the unique ID
+        example: 999
+      group_id:
+        type: integer
+        format: int64
+        description: the unique ID of the group
+        example: 
+      type:
+        type: string
+        description: either 'offer' or 'want'
+        example: offer
+      uuid:
+        type: integer
+        format: int64
+        description: the unique ID
+        example: 999
+      title:
+        type: string
+        description: headline or strapline
+        example: 'Man + van'
+      body:
+        type: string
+        description: Full HTML description
+        example: 'Available office hours within 20km'
+      keywords:
+        type: string
+        description: some other words to search by
+        example: "transport lift carry"
+      created:
+        type: string
+        format: date
+        description: The unixtime this smallad was created
+        example: 2017-04-27T19:24:30 Z
+      expires:
+        type: string
+        format: date
+        description: "when the ad reverts to private scope https://xml2rfc.tools.ietf.org/public/rfc/html/rfc3339.html#anchor14"
+        example: 2017-10-27T19:24:30 Z
+      image: 
+        type: string
+        format: url
+        description: the file in base64 or filename, not sure which
+        example: http://example.com/image.jpg
+      scope:
+        type: integer
+        description: How widely this ad can be seen
+        enum:
+        - private
+        - group
+        - community
+        - network
+        - public
+        example: community
+      location:
+        type: string
+        format: point
+        description: Approx location of the advertiser's home
+        example: POINT(1 60.082736)
+      directexchange:
+        type: boolean
+        description: true if direct barter exchange is acceptable
+      indirectexchange:
+        type: boolean
+        description: true if in-kind reciprocation or community currency is acceptable
+      money:
+        type: boolean
+        description: true if costs would be covered by money
+      path:
+        type: string
+        description: the path to the canonical ad, relative to the hosting site root, without leading slash (to server)
+      url:
+        type: string
+        description: the absolute url (from server)
+      lang:
+        type: string
+        description: The two letter language code
+  Client:
+    type: object
+    properties:
+      apikey: 
+        type: string
+        description: a secret string
+        example: 90df8afmmaskskk7756bdkdd
+      name:
+        type: string
+        description: The friendly name of the group
+        example: My happy group
+      url:
+        type: string
+        description: The base url of the group
+        example: myhappygroup.net
+  Result:
+    type: object
+    properties:
+      total:
+        type: integer
+        description: The total number of results
+        example: 33
+      items:
+        type: array
+        description: The total number of results
+        items:
+          $ref: '#/definitions/Ad'
+            
+# Added by API Auto Mocking Plugin
+host: virtserver.swaggerhub.com
+# basePath: /matslats/transaction-storage/1.0.0
+# Added by API Auto Mocking Plugin
+basePath: /matslats/sol-search/1.0.0
