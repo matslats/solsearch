@@ -1,8 +1,16 @@
+-- phpMyAdmin SQL Dump
+-- version 4.4.13.1deb1
+-- http://www.phpmyadmin.net
+--
+-- Host: localhost
+-- Generation Time: Jun 27, 2017 at 03:50 PM
+-- Server version: 5.6.31-0ubuntu0.15.10.1
+-- PHP Version: 5.6.11-1ubuntu3.4
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET time_zone = "+00:00";
 
-/* MyISAM tables support Spatial indexes */
+
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
@@ -12,18 +20,15 @@ SET time_zone = "+00:00";
 -- Database: `solsearch`
 --
 
+-- --------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS `clients` (
-  `id` int(11) NOT NULL,
-  `url` varchar(32) NOT NULL,
-  `name` tinytext NOT NULL,
-  `apikey` varchar(32) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
+--
+-- Table structure for table `ads`
+--
 
 CREATE TABLE IF NOT EXISTS `ads` (
   `id` int(7) NOT NULL,
-  `type` varchar(12) NOT NULL 
+  `type` varchar(12) NOT NULL,
   `title` tinytext NOT NULL,
   `body` text NOT NULL,
   `keywords` tinytext NOT NULL,
@@ -32,28 +37,32 @@ CREATE TABLE IF NOT EXISTS `ads` (
   `money` tinyint(1) NOT NULL,
   `scope` tinyint(1) NOT NULL DEFAULT '0',
   `uuid` varchar(42) NOT NULL,
-  `lat` float(7,5) NOT NULL,
-  `lon` float(8,5) NOT NULL,
   `expires` int(14) NOT NULL COMMENT 'unixtime',
   `path` varchar(32) NOT NULL,
   `client_id` int(11) NOT NULL,
-  `image_path` VARCHAR(128) NULL DEFAULT NULL,
-  `lang` VARCHAR(2) NOT NULL
+  `location` point NOT NULL,
+  `image_path` varchar(128) DEFAULT NULL,
+  `lang` varchar(2) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
-create DEFINER = CURRENT_USER function harvesine (lat1 double, lon1 double, lat2 double, lon2 double) returns double
- return  3956 * 2 * ASIN(SQRT(POWER(SIN((lat1 - abs(lat2)) * pi()/180 / 2), 2) 
-         + COS(abs(lat1) * pi()/180 ) * COS(abs(lat2) * pi()/180) * POWER(SIN((lon1 - lon2) * pi()/180 / 2), 2) )
+-- --------------------------------------------------------
 
 --
--- Indexes for dumped tables
+-- Table structure for table `clients`
 --
-ALTER TABLE `ads`
-  ADD PRIMARY KEY (`id`);
 
-ALTER TABLE `ads`
-  MODIFY `id` int(7) NOT NULL AUTO_INCREMENT;
-  
+CREATE TABLE IF NOT EXISTS `clients` (
+  `id` int(11) NOT NULL,
+  `url` varchar(32) NOT NULL,
+  `name` tinytext NOT NULL,
+  `apikey` varchar(32) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `log`
+--
 
 CREATE TABLE IF NOT EXISTS `log` (
   `id` int(11) NOT NULL,
@@ -61,3 +70,51 @@ CREATE TABLE IF NOT EXISTS `log` (
   `message` text NOT NULL,
   `client_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `ads`
+--
+ALTER TABLE `ads`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uuid` (`uuid`),
+  ADD KEY `location` (`location`(25));
+
+--
+-- Indexes for table `clients`
+--
+ALTER TABLE `clients`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `apikey` (`apikey`);
+
+--
+-- Indexes for table `log`
+--
+ALTER TABLE `log`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `ads`
+--
+ALTER TABLE `ads`
+  MODIFY `id` int(7) NOT NULL AUTO_INCREMENT;
+--
+-- AUTO_INCREMENT for table `clients`
+--
+ALTER TABLE `clients`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+--
+-- AUTO_INCREMENT for table `log`
+--
+ALTER TABLE `log`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
