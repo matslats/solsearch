@@ -37,7 +37,8 @@ CREATE TABLE IF NOT EXISTS `ads` (
   `expires` int(14) NOT NULL COMMENT 'unixtime',
   `path` varchar(32) NOT NULL,
   `client_id` int(11) NOT NULL,
-  `image_path` VARCHAR(128) NULL DEFAULT NULL 
+  `image_path` VARCHAR(128) NULL DEFAULT NULL,
+  `lang` VARCHAR(2) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 create DEFINER = CURRENT_USER function harvesine (lat1 double, lon1 double, lat2 double, lon2 double) returns double

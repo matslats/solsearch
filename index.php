@@ -43,7 +43,7 @@ $output = '';
 
 
 $request = parse_url($_SERVER['REQUEST_URI']);
-@list(,$endpoint, $arg1, $arg2) = explode('/', $request['path']);
+@list(,$endpoint, $arg1) = explode('/', $request['path']);
 require 'SolSearch.php';
 global $engine;
 $engine = new \SolSearch($connection, $client, $arg1);
@@ -59,7 +59,7 @@ else{
 
   if($client->id == 1 && $endpoint == 'client') {
     //permit the admin functions
-    switch ($_SERVER["REQUEST_METHOD"]) {
+    switch (strtoupper($_SERVER["REQUEST_METHOD"])) {
       case 'POST':
         if ($obj = solSearch_json_input('client')) {
           $apikey = $engine->insertClient($obj->name, $obj->url);
@@ -90,15 +90,14 @@ else{
     }
   }
   else{
-    switch ($_SERVER["REQUEST_METHOD"]) {
+    switch (strtoupper($_SERVER["REQUEST_METHOD"])) {
       case 'GET': //it never needs to GET only one. This is always a filter
         $params = $_GET;
-        $sortby = @$params['sortby'];
+        $sortby = isset($params['sortby']) ? $params['sortby'] : 'expires,DESC';
         $offset = @$params['offset'];
         $limit = @$params['limit'];
-        $dir = @$params['dir'];
         unset($params['sortby'], $params['dir'], $params['limit'], $params['offset']);
-        $output = $engine->filter($endpoint, $params, $offset, $limit, $sortby, $dir);
+        $output = $engine->filter($endpoint, $params, $offset, $limit, $sortby);
         break;
       case 'POST':
       case 'PUT':
@@ -108,9 +107,15 @@ else{
         else {
           $items = [solSearch_json_input()];
         }
-        $engine->upsert($endpoint, $items);
+file_put_contents('debug.msg', print_r($items, 1));
+        if ($success = $engine->upsert($endpoint, $items)) {
+          // Assuming no problems
+          $status_code= 201;
+        }
+        break;
       case 'DELETE':
-        $engine->delete((array)solSearch_json_input());
+        $uuids = $arg1 ? [$arg1] : solSearch_json_input();
+        $engine->delete($uuids);
         break;
       case 'OPTIONS':
         return $engine->getTypes();

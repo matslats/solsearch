@@ -9,7 +9,7 @@
  * title
  * body
  * keywords
- * language
+ * lang
  * location
  * scope, integer from 0-3
  * expiry (when the scope goes to zero)
