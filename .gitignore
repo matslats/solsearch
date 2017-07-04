@@ -9,4 +9,5 @@ vendor
 composer.lock
 composer.phar
 db.ini
+james.db.ini
 error.log

@@ -49,6 +49,16 @@ interface SolSearchInterface {
   public function searchAds($type, $params, $offset = 0, $limit = 10, $sort_by = 'expires,asc');
 
   /**
+   * Get one ad by UUID
+   * 
+   * @param string $uuid
+   *
+   * @return SolAd returns one SolAd object, or NULL
+   */
+
+  public function getAd($uuid);
+
+  /**
    * Update one ad.
    *
    * @param SolAd $ads

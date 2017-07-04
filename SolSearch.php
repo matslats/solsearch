@@ -46,11 +46,28 @@ class SolSearch implements SolSearchInterface {
 
 
   /**
+   * Get one ad. Returns ad object or null
+   */
+
+  public function getAd($uuid) {
+    $query = "SELECT * FROM ads WHERE uuid = '" . $uuid . "';";
+echo $query;
+    $result = $this->dbQuery($query);
+
+    if ($result === false) {
+        return false; 
+    } else {
+        $row = $result->fetch();
+        return $row;
+    }
+  }
+
+  /**
    * Filter the database and return the results
    *
    * @note Not currently possible to order by distance. Radius uses a box not a circle.
    */
-  public function filter($type, $params, $offset = 0, $limit = 10, $sort_by = 'expires,asc') {
+  public function searchAds($type, $params, $offset = 0, $limit = 10, $sort_by = 'expires,asc') {
     $query = "SELECT id, type, title, body, keywords, directexchange, indirectexchange, money, scope, uuid, expires, path, client_id, X(location) as lon, Y(location) as lat"
         . " FROM ads WHERE type = '$type'";
     if (!empty($params['fragment'])) {
@@ -118,12 +135,36 @@ class SolSearch implements SolSearchInterface {
   /**
    * Delete many ads from the database
    */
-  public function delete(array $uuids) {
+  public function bulkDeleteAds(array $uuids) {
     foreach ($uuids as $uuid) {
       $in[] = "'".$uuid."'";
     }
     $this->dbQuery("DELETE FROM ads WHERE uuid IN (".implode($in).")");
   }
+
+
+  public function updateAd(SolAd $ad) {
+    return false ; 
+  }
+
+
+  public function bulkUpdateAds(array $ads) {
+    return false ; 
+  }
+
+  public function insertAd(SolAd $ad) {
+    return false ; 
+  }
+
+
+  public function bulkInsertAds(array $ads) {
+    return false ; 
+  }
+
+  public function deleteAd(string $uuids) {
+    return false ; 
+  }
+
 
   /**
    * Update a single ad

@@ -10,15 +10,20 @@ require 'SolSearch.php';
 $dbConfig = parse_ini_file('db.ini');
 $dbh = connectPdo($dbConfig);
 
-// Instantiate the SolSearch service
+$app = new \Slim\App();
 
+// Instantiate the SolSearch service
 $solSearch = new SolSearch($dbh, "", "");
 
-// Define API
+$container = $app->getContainer() ;
+$container['solSearch'] = $solSearch ; 
 
-$app = new \Slim\App;
+  
+// Get one ad
+$app->get('/ad/{adId}', function (Request $request, Response $response, $args) {
+   return $response->withJson($this->get('solSearch')->getAd($args['adId'])) ; 
+});
 
-// READING
 
 // Clients Endpoint
 // If client ID specified, then get just that client, otherwise return all clients
