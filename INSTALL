@@ -17,8 +17,16 @@ Install PHP Depedencies:
 - If you have a global install of composer you can do:
 -- composer install
 
-Setup DB:
-- Copy db.ini.example to db.ini
-- Edit database connection for your database
+Setup Database:
+
 - Import database structure, e.g. mysql -u user -p < db.sql
 
+Configure SolSearch:
+
+- Copy config.ini.example to config.ini
+
+- Setup DB:
+-- Edit database connection for your database
+
+- Setup Logging
+-- Enter logfile with absolute path

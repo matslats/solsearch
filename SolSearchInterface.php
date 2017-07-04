@@ -3,17 +3,6 @@
 
 /**
  * Interface for SolSearch, to be connected to a REST API
- *
- * The SolAd type is an object with the following properties:
- * UUID
- * title
- * body
- * keywords
- * language
- * location
- * scope, integer from 0-3
- * expiry (when the scope goes to zero)
- * url
  */
 
 interface SolSearchInterface {

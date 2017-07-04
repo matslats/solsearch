@@ -3,3 +3,7 @@ name = solsearch
 host = localhost
 username = username
 password = password
+
+[logging]
+logfile = /tmp/solsearch.log
+

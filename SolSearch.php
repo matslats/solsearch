@@ -1,6 +1,5 @@
 <?php
-
-require 'SolSearchInterface.php';
+require_once 'SolSearchInterface.php';
 
 /**
  * Example
@@ -15,7 +14,10 @@ require 'SolSearchInterface.php';
   "directexchange": "true",
   "indirectexchange": "true",
   "money": "false",
-  "expires": 15000000000
+  "expires": 15000000000,
+  "type":"offer",
+  "lang":"",
+  "url": "http:\/\/matslats.net\/ad\/38"
 }
  */
 
@@ -34,14 +36,14 @@ class SolSearch implements SolSearchInterface {
   private $connection;
 
   /**
-   * the type, e.g. offer, want
+   * File handle to logfile
+   * @var string
    */
-  private $type;
+  private $logFileHandle;
 
-  function __construct($connection, $client, $type) {
+  function __construct($connection, $logFileHandle) {
     $this->connection = $connection;
-    $this->groupId = $client->id;
-    $this->type = $type;
+    $this->logFileHandle = $logFileHandle;
   }
 
 
@@ -51,7 +53,7 @@ class SolSearch implements SolSearchInterface {
 
   public function getAd($uuid) {
     $query = "SELECT * FROM ads WHERE uuid = '" . $uuid . "';";
-echo $query;
+
     $result = $this->dbQuery($query);
 
     if ($result === false) {
@@ -68,8 +70,9 @@ echo $query;
    * @note Not currently possible to order by distance. Radius uses a box not a circle.
    */
   public function searchAds($type, $params, $offset = 0, $limit = 10, $sort_by = 'expires,asc') {
-    $query = "SELECT id, type, title, body, keywords, directexchange, indirectexchange, money, scope, uuid, expires, path, client_id, X(location) as lon, Y(location) as lat"
-        . " FROM ads WHERE type = '$type'";
+    $query = "SELECT a.id, c.name,  c.url, type, lang, title, body, keywords, directexchange, indirectexchange, money, scope, uuid, expires, path, client_id, X(location) as lon, Y(location) as lat"
+        . " FROM ads a, clients c WHERE a.client_id = c.id AND type = '$type'";
+    
     if (!empty($params['fragment'])) {
       $like = '%'. $params['fragment'] .'%';
       $query .= " AND (title LIKE '$like' OR body LIKE '$like' or keywords LIKE '$like') ";
@@ -108,6 +111,13 @@ echo $query;
     if (isset($params['money']) and $params['money'] == 0) {
       $query .= ' AND money = 0 ';
     }
+    if (isset($params['lang'])) {
+      $query .= ' AND lang = '.$params['lang'];
+    }
+
+    $result = $this->dbQuery($query);
+    $total = mysql_num_rows($result);
+
     //Sorting
     list($field, $dir) = explode(',', $sort_by.',ASC');
     if ($field == 'distance' and isset($params['circle'])) {
@@ -115,24 +125,30 @@ echo $query;
     }
     else {
       $query .= " ORDER BY $field $dir";
+      $recalc = TRUE;
     }
 
     if ($limit) {
       $query .= " limit $limit";
+      $recalc = TRUE;
     }
+
     if ($limit && $offset) {
       $query .= ", $offset";
     }
 
-    echo $query;
-
-    $result = $this->dbQuery($query);
-
-    $output = [];
-    while ($row = mysql_fetch_object($result)) {
-      $output[] = $row;
+    if ($recalc) {
+      $result = $this->dbQuery($query);
     }
-    return $output;
+    $items = [];
+
+    while ($row = mysql_fetch_object($result)) {
+      $row->url = 'http://'.$row->url.'/'.$row->path;
+      unset($row->path);
+      $items[] = $row;
+      $this->log($row);
+    }
+    return ['total' => $total, 'items' => $items];
   }
 
   /**
@@ -142,14 +158,12 @@ echo $query;
     foreach ($uuids as $uuid) {
       $in[] = "'".$uuid."'";
     }
-    $this->dbQuery("DELETE FROM ads WHERE uuid IN (".implode($in).")");
+    $this->dbQuery("DELETE FROM ads WHERE uuid IN (".implode(',', $in).")");
   }
-
 
   public function updateAd(SolAd $ad) {
     return false ; 
   }
-
 
   public function bulkUpdateAds(array $ads) {
     return false ; 
@@ -174,95 +188,39 @@ echo $query;
    *
    * @param string $type
    * @param stdClass[] $ads
+   *
+   * @return bool
+   *   TRUE if the operation was successful.
    */
   public function upsert($type, array $ads) {
     //todo check the uuid and either insert or update
     foreach ($ads as $ad) {
       $this->validateSolAd($ad);
-      list($lat, $lon) = explode(',', $ad->location);
-      $location = "ST_GeomFromText('POINT($lon $lat)')";
+      //list($lat, $lon) = explode(',', $ad->location);
+      $location = "ST_GeomFromText('$ad->location')";
       $query = "REPLACE INTO ads
-        (`uuid`, `type`, `title`, `body`, `keywords`, `image_path`, `directexchange`, `indirectexchange`, `money`, `scope`, `location`, `expires`, `path`, `client_id`)
-        VALUES ('$ad->uuid', '$type', '$ad->title', '$ad->body', '$ad->keywords', '$ad->image', '$ad->directexchange', '$ad->indirectexchange', '$ad->money', '$ad->scope', $location, '$ad->expires', '$ad->path', '$this->groupId')";
-      $this->dbQuery($query);
-      $this->log("inserted $uuid");
+        (`uuid`, `type`, `title`, `body`, `keywords`, `image_path`, `directexchange`, `indirectexchange`, `money`, `scope`, `location`, `expires`, `path`, `client_id`, `lang`)
+        VALUES ('$ad->uuid', '$type', '$ad->title', '$ad->body', '$ad->keywords', '$ad->image', '$ad->directexchange', '$ad->indirectexchange', '$ad->money', '$ad->scope', $location, '$ad->expires', '$ad->path', '$this->groupId', '$ad->lang')";
+      $result = $this->dbQuery($query);
     }
+    return is_object($result) && !mysql_error($result);
   }
 
-  /**
-   * Admin only. Add a new group to the database. This must be done before any
-   * of that groups ads are added. Admin only.
-   *
-   * @param string $apikey
-   * @param string $url
-   * @param string $name
-   */
-  public function insertClient($url, $name) {
-    $apikey = $this->makeAPIkey();
-    $result = $this->dbQuery("INSERT INTO clients (apikey, name, url) VALUES ('$apikey', '$name', '$url')");
-    return $apikey;
-  }
-
-  /**
-   * Admin only.  Remove a client and all its ads from the db.
-   *
-   * @param string $apikey
-   */
-  public function deleteClient($id) {
-     $this->dbQuery("DELETE FROM clients WHERE id = '$id'");
-     $this->dbQuery("DELETE FROM ads WHERE client_id = '$idd'");
-  }
-
-  /**
-   * Admin only. Update a client's name or url
-   */
-  public function updateClient($id, $name, $url) {
-    $query = "UPDATE clients SET url = '$url', name = '$name' WHERE id = '$id'";
-    $this->dbQuery($query);
-  }
-
-
-  public function listClients() {
-    $result = $this->dbQuery(
-      "SELECT c.id, c.name, c.url FROM clients c LEFT JOIN ads a ON c.id = a.client_id GROUP BY c.id, a.type"
-    );
-    while ($item = mysql_fetch_object($result)) {
-      $table[] = $item;
-    }
-    return $table;
-  }
-
-  private function makeAPIkey() {
-    $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    $randstring = '';
-    for ($i=0; $i<12; $i++) {
-      $randstring .= $characters[rand(0, strlen($characters))];
-    }
-    return $randstring;
-  }
-
-  private function dbQuery($sql) {
+  protected function dbQuery($sqlString) {
     try {
-      $this->log($sql);
-      return $this->connection->query($sql);
+      $this->log($sqlString);
+      $result = $this->connection->query($sqlString);
+      return $result; 
     }
-    // @todo wat? why catch and then throw exception?
+    // @todo  does this need to be logged to file?
     catch(PDOException $e) {
-      throw $e;
+      $this->log('Error: ', $e);
     }
   }
 
+  // @todo replace this with proper logging
   public function log($message) {
-    $query = "INSERT INTO log (message, client_id) VALUES ('".addslashes($message)."', $this->groupId)";
-    mysql_query($query, $this->connection);
+    fputs($this->logFileHandle, $message . "\n");
   }
 
-  public function getTypes() {
-    $query = "SELECT type from ads GROUP BY type";
-    $result = $this->dbQuery($query);
-    while ($type = mysql_fetch_field($result)) {
-      $types[] = $type;
-    }
-    return $types;
-  }
 }

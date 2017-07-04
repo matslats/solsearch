@@ -8,6 +8,6 @@ local
 vendor
 composer.lock
 composer.phar
-db.ini
-james.db.ini
+config.ini
+james.config.ini
 error.log
