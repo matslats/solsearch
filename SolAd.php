@@ -122,7 +122,7 @@ class SolAd {
     //check all the fields exist
     $fields = ['uuid', 'title', 'body', 'keywords', 'created', 'expires', 'location', 'directexchange', 'indirectexchange', 'money', 'path'];
     
-    $exceptions = new Array();
+    $exceptions = []`;
 
     foreach ($fields as $fieldname) {
       if (!isset($this->{$fieldname})) {
