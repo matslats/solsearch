@@ -3,18 +3,12 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Generation Time: Jun 27, 2017 at 03:50 PM
+-- Generation Time: Jun 27, 2017 at 04:23 PM
 -- Server version: 5.6.31-0ubuntu0.15.10.1
 -- PHP Version: 5.6.11-1ubuntu3.4
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET time_zone = "+00:00";
-
-
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8mb4 */;
 
 --
 -- Database: `solsearch`
@@ -43,7 +37,7 @@ CREATE TABLE IF NOT EXISTS `ads` (
   `location` point NOT NULL,
   `image_path` varchar(128) DEFAULT NULL,
   `lang` varchar(2) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 -- --------------------------------------------------------
 
@@ -81,7 +75,8 @@ CREATE TABLE IF NOT EXISTS `log` (
 ALTER TABLE `ads`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uuid` (`uuid`),
-  ADD KEY `location` (`location`(25));
+  ADD KEY `location` (`location`(25)),
+  ADD KEY `location_2` (`location`(25));
 
 --
 -- Indexes for table `clients`
@@ -115,6 +110,3 @@ ALTER TABLE `clients`
 --
 ALTER TABLE `log`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

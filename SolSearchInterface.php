@@ -3,17 +3,6 @@
 
 /**
  * Interface for SolSearch, to be connected to a REST API
- *
- * The SolAd type is an object with the following properties:
- * UUID
- * title
- * body
- * keywords
- * lang
- * location
- * scope, integer from 0-3
- * expiry (when the scope goes to zero)
- * url
  */
 
 interface SolSearchInterface {
@@ -68,42 +57,4 @@ interface SolSearchInterface {
    */
   public function delete(array $uuids);
 
-  /**
-   * Admin only. Add a new group to the database. This must be done before any
-   * of that groups ads are added. Admin only.
-   *
-   * @param string $url
-   * @param string $name
-   *
-   * @return string
-   *   The new API Key
-   */
-  public function insertClient($url, $name);
-
-  /**
-   * Admin only.  Remove a client and all its ads from the db.
-   *
-   * @param string $apikey
-   * @param string $url
-   */
-  public function deleteClient($apikey);
-
-  /**
-   * Admin only. Update a client's name or url
-   */
-  public function updateClient($id, $url, $name);
-
-  /**
-   * Admin only. Show a list of all the connected clients;
-   *
-   * @return array
-   */
-  public function listCLients();
-
-  /**
-   * Get the types which are in use
-   *
-   * @return array
-   */
-  public function getTypes();
 }

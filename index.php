@@ -1,10 +1,6 @@
 <?php
+require 'conf.php';
 
-define('DB_NAME', 'solsearch');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-
-set_exception_handler('solsearch_exception_handler');
 header('Content-type: application/json');
 
 
@@ -34,6 +30,7 @@ if (!isset($_SERVER['ACCEPT'])) {
 $connection = mysql_connect('localhost', DB_USER, DB_PASS);
 mysql_select_db(DB_NAME, $connection);
 
+set_exception_handler('solsearch_exception_handler');
 //Authenticate using the API key.
 $result = mysql_query("SELECT * FROM clients WHERE apikey = '".$headers['Apikey']."'");
 $client = mysql_fetch_object($result);
@@ -44,10 +41,15 @@ $output = '';
 
 $request = parse_url($_SERVER['REQUEST_URI']);
 @list(,$endpoint, $arg1) = explode('/', $request['path']);
-require 'SolSearch.php';
 global $engine;
-$engine = new \SolSearch($connection, $client, $arg1);
-
+if ($client->id == 1) {
+  require 'SolSearchAdmin.php';
+  $engine = new \SolSearchAdmin($connection, $client, $arg1);
+}
+else {
+  require 'SolSearch.php';
+  $engine = new \SolSearch($connection, $client, $arg1);
+}
 if (empty($client->id)) {
   $engine->log("Unidentified client");
   $result = array(403);
@@ -107,7 +109,6 @@ else{
         else {
           $items = [solSearch_json_input()];
         }
-file_put_contents('debug.msg', print_r($items, 1));
         if ($success = $engine->upsert($endpoint, $items)) {
           // Assuming no problems
           $status_code= 201;
@@ -117,8 +118,6 @@ file_put_contents('debug.msg', print_r($items, 1));
         $uuids = $arg1 ? [$arg1] : solSearch_json_input();
         $engine->delete($uuids);
         break;
-      case 'OPTIONS':
-        return $engine->getTypes();
     }
   }
 }
