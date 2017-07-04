@@ -123,6 +123,9 @@ echo $query;
     if ($limit && $offset) {
       $query .= ", $offset";
     }
+
+    echo $query;
+
     $result = $this->dbQuery($query);
 
     $output = [];
@@ -185,56 +188,6 @@ echo $query;
       $this->log("inserted $uuid");
     }
   }
-
-  /**
-   * Check all the fields have good data
-   *
-   * @param \Drupal\smallads_index\SolAd $ad
-   *
-   * @throws Exception
-   *
-   */
-  private function validateSolAd(stdClass $ad) {
-    //check all the fields exist
-    $fields = ['uuid', 'title', 'body', 'keywords', 'created', 'expires', 'location', 'directexchange', 'indirectexchange', 'money', 'path'];
-    foreach ($fields as $fieldname) {
-      if (!isset($ad->{$fieldname})) {
-        throw new \Exception("$fieldname not found on ad");
-      }
-    }
-    //
-    //
-    //check the format of UUID - what is the name of that format?
-
-    //$title is max 100 chars
-    if (strlen($ad->title) > 128) {
-      //We don't have a way to send warnings.
-      $ad->title = substr($ad->title, 0, 128);
-    }
-    //sanitise the body
-
-
-    list($lat, $lon) = explode(',', $ad->location);
-    if ($lat > 90 or $lat < -90) {
-      throw new exception('Latitude out of range. should be -90 < 90');
-    }
-    if ($lon > 180 or $lon < -180) {
-      throw new exception('Longitude out of range. should be -180 < 180');
-    }
-    if (!is_numeric($ad->scope) or $ad->scope < 3 or $ad->scope > 4) {
-      throw new exception('Scope out of range. should be a number from 3-4: '.$ad->scope);
-    }
-    $limit = strtotime('+1 year');
-    if ($ad->expires > $limit + 86400) {//a year and a day
-      $ad->expires = strtotime('+1 year');
-      $messages[] = 'Expiry has been curtailed to 1 year hence';
-    }
-
-    //put in the default group
-    $ad->group_id = $this->groupId;
-    $ad->type = $this->type;
-  }
-
 
   /**
    * Admin only. Add a new group to the database. This must be done before any

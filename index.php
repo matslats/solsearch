@@ -17,11 +17,17 @@ $solSearch = new SolSearch($dbh, "", "");
 
 $container = $app->getContainer() ;
 $container['solSearch'] = $solSearch ; 
-
   
 // Get one ad
 $app->get('/ad/{adId}', function (Request $request, Response $response, $args) {
    return $response->withJson($this->get('solSearch')->getAd($args['adId'])) ; 
+});
+
+// Search for ads
+$app->get('/searchAd', function (Request $request, Response $response, $args) {
+   $params = $request->getQueryParams();
+   $type = $params['type'];
+   return $response->withJson($this->get('solSearch')->searchAds($type));
 });
 
 
