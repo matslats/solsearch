@@ -1,5 +1,5 @@
 <?php
-require_once 'SolSearchInterface.php';
+//require_once 'SolSearchInterface.php';
 
 /**
  * Example
@@ -144,37 +144,32 @@ class SolSearch implements SolSearchInterface {
     return ['total' => $total, 'items' => $items];
   }
 
-  /**
-   * Delete many ads from the database
-   */
+  public function updateAd(SolAd $ad) {
+    return $this->upsert($ad->type, [$ad]);
+  }
+
+  public function bulkUpdateAds(array $ads) {
+    return $this->upsert($ad->type, [$ads]);
+  }
+
+  public function insertAd(SolAd $ad) {
+    return $this->upsert($ad->type, [$ad]);
+  }
+
+  public function bulkInsertAds(array $ads) {
+    return $this->upsert($ad->type, [$ads]);
+  }
+
+  public function deleteAd($uuid) {
+    $this->bulkDeleteAds([$uuid]);
+  }
+
   public function bulkDeleteAds(array $uuids) {
     foreach ($uuids as $uuid) {
       $in[] = "'".$uuid."'";
     }
     $this->dbQuery("DELETE FROM ads WHERE uuid IN (".implode(',', $in).")");
   }
-
-  public function updateAd(SolAd $ad) {
-    return false ;
-  }
-
-  public function bulkUpdateAds(array $ads) {
-    return false ;
-  }
-
-  public function insertAd(SolAd $ad) {
-    return false ;
-  }
-
-
-  public function bulkInsertAds(array $ads) {
-    return false ;
-  }
-
-  public function deleteAd(string $uuids) {
-    return false ;
-  }
-
 
   /**
    * Update a single ad
@@ -199,11 +194,22 @@ class SolSearch implements SolSearchInterface {
     return is_object($result) && !mysql_error($result);
   }
 
+  /**
+   * Admin only.  Remove a client and all its ads from the db.
+   *
+   * @param string $apikey
+   */
+  public function deleteGroup() {
+    // Only possible to delete your own group.
+    $id = $this->group->id;
+    $this->dbQuery("DELETE FROM clients WHERE id = '$id'");
+    $this->dbQuery("DELETE FROM ads WHERE client_id = '$id'");
+  }
+
   protected function dbQuery($sqlString) {
     try {
       $this->log($sqlString);
-      $result = $this->connection->query($sqlString);
-      return $result;
+      return $this->connection->query($sqlString);
     }
     // @todo  does this need to be logged to file?
     catch(PDOException $e) {

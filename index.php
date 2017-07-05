@@ -14,22 +14,22 @@ $result = $dbh->query("SELECT * FROM clients WHERE apikey = '".$_SERVER['HTTP_AP
 $client = $result->fetchObject();
 $app = new \Slim\App();
 
+$container = $app->getContainer() ;
+
 if ($client->id == 1) {
   require 'SolSearchAdmin.php';
-  $solSearch = new \SolSearchAdmin($dbh, $logFileHandle, $client);
+  $container['solSearch'] = new \SolSearchAdmin($dbh, $logFileHandle, $client);
 }
 else {
   require 'SolSearch.php';
-  $solSearch = new SolSearch($dbh, $logFileHandle, $client);
+  $container['solSearch'] = new SolSearch($dbh, $logFileHandle, $client);
 }
 // Instantiate the SolSearch service
 
 
-$container = $app->getContainer() ;
-$container['solSearch'] = $solSearch ;
 
 // Search for ads
-$app->get('/search', function (Request $request, Response $response, $args) {
+$app->get('/ads', function (Request $request, Response $response, $args) {
   $params = $request->getQueryParams();
   $type = $params['type'];
   $sortby = isset($params['sortby']) ? $params['sortby'] : 'expires,DESC';
@@ -40,9 +40,77 @@ $app->get('/search', function (Request $request, Response $response, $args) {
 });
 
 // Get one ad
-$app->get('/ad/{adId}', function (Request $request, Response $response, $args) {
-   return $response->withJson($this->get('solSearch')->getAd($args['adId'])) ;
+$app->get('/ads/{uuid}', function (Request $request, Response $response, $args) {
+  return $response->withJson($this->get('solSearch')->getAd($args['uuid']));
 });
+
+// Delete one ad
+$app->delete('/ads/{uuid}', function (Request $request, Response $response, $args) {
+  return $response->withJson($this->get('solSearch')->deleteAd($args['uuid']));
+});
+
+// Update one ad
+$app->put('/ads', function (Request $request, Response $response, $args) {
+  $data = json_decode($request->getBody());
+  $solAd = new SolAd($data);
+  return $response->withJson($this->get('solSearch')->updateAd($solAd));
+});
+
+// Bulk create/update
+$app->put('/bulk', function (Request $request, Response $response, $args) {
+  $solAds = [];
+  $data = json_decode($request->getBody());
+  foreach($data as $obj) {
+    $solAds[] = new SolAd($obj);
+  }
+  return $response->withJson($this->get('solSearch')->bulkUpdateAds($solAds));
+});
+
+// Bulk delete
+$app->delete('/bulk', function (Request $request, Response $response, $args) {
+  $uuids = json_decode($request->getBody());
+  return $response->withJson($this->get('solSearch')->bulkDeleteAds($uuids));
+});
+
+
+// Create one ad
+$app->post('/ads', function (Request $request, Response $response, $args) {
+  $data = json_decode($request->getBody());
+  $solAd = new SolAd($data);
+  return $response->withJson($this->get('solSearch')->insertAd($solAd));
+});
+
+// Delete a group and all its ads
+$app->delete('/groups', function (Request $request, Response $response, $args) {
+  return $response->withJson($this->get('solSearch')->deleteGroup());
+});
+
+/**
+ * Admin only operations
+ */
+// Create a new group, returning the apikey
+$app->post('/groups', function (Request $request, Response $response, $args) {
+  $data = json_decode($request->getBody());
+  // @todo Need to validate this data
+  return $response->withJson($this->get('solSearch')->insertGroup($data));
+});
+
+// Delete a group and all its ads
+$app->get('/groups', function (Request $request, Response $response, $args) {
+  return $response->withJson($this->get('solSearch')->listGroups());
+});
+
+// Update a group - no use-case for this right now.
+//$app->put('/group', function (Request $request, Response $response, $args) {
+//  $data = json_decode($request->getBody());
+//  // @todo Need to validate this data
+//  return $response->withJson($this->get('solSearch')->updateGroup($data));
+//});
+
+
+
+
+
 
 
 // Start API

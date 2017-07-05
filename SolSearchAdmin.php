@@ -27,16 +27,6 @@ class SolSearchAdmin extends Solsearch implements SolSearchAdminInterface {
   }
 
   /**
-   * Admin only.  Remove a client and all its ads from the db.
-   *
-   * @param string $apikey
-   */
-  public function deleteGroup($id) {
-     $this->dbQuery("DELETE FROM clients WHERE id = '$id'");
-     $this->dbQuery("DELETE FROM ads WHERE client_id = '$idd'");
-  }
-
-  /**
    * Admin only. Update a client's name or url
    */
   public function updateGroup($id, $name, $url) {
@@ -49,10 +39,10 @@ class SolSearchAdmin extends Solsearch implements SolSearchAdminInterface {
     $result = $this->dbQuery(
       "SELECT c.id, c.name, c.url FROM clients c LEFT JOIN ads a ON c.id = a.client_id GROUP BY c.id, a.type"
     );
-    while ($item = mysql_fetch_object($result)) {
-      $table[] = $item;
+    while ($item = $result->fetchObject()) {
+      $groups[] = $item;
     }
-    return $table;
+    return $groups;
   }
 
   private function makeAPIkey() {

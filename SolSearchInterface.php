@@ -25,9 +25,9 @@ interface SolSearchInterface {
    * - bool directexchange: TRUE to exclude transactionts that don't allow barter
    * - bool indirectexchange: TRUE to exclude transactions that don't allow ccs
    * - bool money: TRUE to exclude transactions that don't allow moneyi
-   * 
+   *
    * @todo HOW ARE THESE APPLIED IF MORE THAN ONE IS SPECIFIED?
-   * 
+   *
    * @param int $limit
    * @param int $offset
    * @param string $sort_by
@@ -39,7 +39,7 @@ interface SolSearchInterface {
 
   /**
    * Get one ad by UUID
-   * 
+   *
    * @param string $uuid
    *
    * @return SolAd returns one SolAd object, or NULL
@@ -93,12 +93,12 @@ interface SolSearchInterface {
   /**
    * Delete an ad.
    *
-   * @param string[] $uuids
+   * @param string $uuid
    *
    * @return bool
    *   TRUE if the delete was successful
    */
-  public function deleteAd(string $uuid);
+  public function deleteAd($uuid);
 
   /**
    * @param SolAd $ads
@@ -111,5 +111,10 @@ interface SolSearchInterface {
    */
   public function bulkDeleteAds(array $uuids);
 
+
+  /**
+   * Allow a group to remove itself
+   */
+  public function deleteGroup($id);
 
 }

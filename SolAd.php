@@ -2,6 +2,29 @@
 /**
  * Class for the ad when it is output. On input there is no id and the client id
  * and name are inferred from the authentication
+ *
+    {
+        "id": "85",
+        "name": "admin",
+        "url": "matslats.net",
+        "type": "offer",
+        "lang": "",
+        "title": "A very nice gelatinous  ",
+        "body": "Abico ea lenis wisi. Commoveo facilisi in praesent sit tation valetudo vicis vulputate ymo. Abico elit natu obruo ratis scisco vindico. Bene commodo diam paulatim. Diam et humo lenis lucidus neque occuro os patria vereor. Et immitto pala. Adipiscing caecus dolore esca et eu lenis refoveo vereor.Causa feugiat minim oppeto pagus proprius quidne voco. Brevitas ille turpis. Olim sino vindico. Aliquam dolor persto. Decet iaceo illum jumentum neque nibh nutus ut. Genitus sit tum. Comis eu genitus huic illum ullamcorper vulputate. Abbas aliquam conventio ille jugis proprius similis sit valde. Causa conventio defui dolor erat in inhibeo meus pneum.",
+        "keywords": "admin, test category",
+        "directexchange": "0",
+        "indirectexchange": "0",
+        "money": "1",
+        "scope": "4",
+        "uuid": "77791de2-ce80-4d10-abfc-4130ac7ca115",
+        "expires": "1498509094",
+        "path": "ad/295",
+        "client_id": "1",
+        "lon": "0",
+        "lat": "51"
+    }
+
+
  */
 
 class SolAd {
@@ -108,7 +131,9 @@ class SolAd {
    */
   public $loc;
 
-  // @todo make a sensible constructor
+  function __construct($object) {
+    $this->validate($object);
+  }
 
    /**
    * Check all the fields are set and have good data
@@ -121,15 +146,15 @@ class SolAd {
   public function validate() {
     //check all the fields exist
     $fields = ['uuid', 'title', 'body', 'keywords', 'created', 'expires', 'location', 'directexchange', 'indirectexchange', 'money', 'path'];
-    
-    $exceptions = []`;
+
+    $exceptions = [];
 
     foreach ($fields as $fieldname) {
       if (!isset($this->{$fieldname})) {
         $exceptions[] = "$fieldname not found on ad";
       }
     }
-    
+
 
     //check the format of UUID - what is the name of that format?
 

@@ -21,11 +21,6 @@ interface SolSearchAdminInterface extends SolSearchInterface {
   public function insertGroup($url, $name);
 
   /**
-   * Remove a group and all its ads from the db.
-   */
-  public function deleteGroup($id);
-
-  /**
    * Update a group's name or url
    */
   public function updateGroup($id, $url, $name);
