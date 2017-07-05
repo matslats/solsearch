@@ -1,9 +1,9 @@
 # solsearch
-A service to store and retrieve geoposititoned ads
+A service to store and retrieve geopositoned ads
 
-solsearch allows many 'advertisers' to 'post' their adverts, and allows any client to list and search across all ads
+Solsearch allows many 'advertisers' to 'post' their adverts, and allows any client to list and search across all ads.
 
-It will have the features
+It will have the features:
 
 * provide a minimal implementation of an 'ad' that provides baseline functionality but flexibility to be used by advertisers for any product or service
 * allow advertisers full control over their adverts
@@ -27,3 +27,10 @@ The calls available on the API are:
 * bulkDelete
 * search
 
+How to register a new group:
+
+POST http://solsearch/client
+{
+  "url" : "newgroup.org",
+  "name": "My New Group"
+}

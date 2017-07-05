@@ -27,7 +27,7 @@ class SolSearch implements SolSearchInterface {
    * The API key of the group
    * @var string
    */
-  private $groupId;
+  private $group;
 
   /**
    * The database connection
@@ -41,9 +41,10 @@ class SolSearch implements SolSearchInterface {
    */
   private $logFileHandle;
 
-  function __construct($connection, $logFileHandle) {
+  function __construct($connection, $logFileHandle, $group) {
     $this->connection = $connection;
     $this->logFileHandle = $logFileHandle;
+    $this->group = $group;
   }
 
 
@@ -52,16 +53,10 @@ class SolSearch implements SolSearchInterface {
    */
 
   public function getAd($uuid) {
-    $query = "SELECT * FROM ads WHERE uuid = '" . $uuid . "';";
-
+    $query = "SELECT a.id, c.name,  c.url, type, lang, title, body, keywords, directexchange, indirectexchange, money, scope, uuid, expires, path, client_id, X(location) as lon, Y(location) as lat"
+       . " FROM ads a LEFT JOIN clients c ON a.client_id = c.id WHERE uuid = '" . $uuid . "'";
     $result = $this->dbQuery($query);
-
-    if ($result === false) {
-        return false; 
-    } else {
-        $row = $result->fetch();
-        return $row;
-    }
+    return $result ? $result->fetchObject() : FALSE;
   }
 
   /**
@@ -71,14 +66,14 @@ class SolSearch implements SolSearchInterface {
    */
   public function searchAds($type, $params, $offset = 0, $limit = 10, $sort_by = 'expires,asc') {
     $query = "SELECT a.id, c.name,  c.url, type, lang, title, body, keywords, directexchange, indirectexchange, money, scope, uuid, expires, path, client_id, X(location) as lon, Y(location) as lat"
-        . " FROM ads a, clients c WHERE a.client_id = c.id AND type = '$type'";
-    
+        . " FROM ads a LEFT JOIN clients c ON a.client_id = c.id WHERE a.client_id = c.id AND type = '$type'";
+
     if (!empty($params['fragment'])) {
       $like = '%'. $params['fragment'] .'%';
       $query .= " AND (title LIKE '$like' OR body LIKE '$like' or keywords LIKE '$like') ";
     }
     // scope 0 means unpublished and 1 means neighbourhood Neither supported here at the moment
-    $query .= " AND (scope = 4 OR (client_id = $this->groupId AND scope = 3)) ";
+    $query .= " AND (scope = 4 OR (client_id = ".$this->group->id." AND scope = 3)) ";
 
     if (!empty($params['circle'])) {
       list($lat, $lon, $radius) = explode(',', $params['circle']);
@@ -114,9 +109,8 @@ class SolSearch implements SolSearchInterface {
     if (isset($params['lang'])) {
       $query .= ' AND lang = '.$params['lang'];
     }
-
     $result = $this->dbQuery($query);
-    $total = mysql_num_rows($result);
+    $total = $result->rowCount();
 
     //Sorting
     list($field, $dir) = explode(',', $sort_by.',ASC');
@@ -142,11 +136,10 @@ class SolSearch implements SolSearchInterface {
     }
     $items = [];
 
-    while ($row = mysql_fetch_object($result)) {
+    while ($row = $result->fetchObject()) {
       $row->url = 'http://'.$row->url.'/'.$row->path;
       unset($row->path);
       $items[] = $row;
-      $this->log($row);
     }
     return ['total' => $total, 'items' => $items];
   }
@@ -162,24 +155,24 @@ class SolSearch implements SolSearchInterface {
   }
 
   public function updateAd(SolAd $ad) {
-    return false ; 
+    return false ;
   }
 
   public function bulkUpdateAds(array $ads) {
-    return false ; 
+    return false ;
   }
 
   public function insertAd(SolAd $ad) {
-    return false ; 
+    return false ;
   }
 
 
   public function bulkInsertAds(array $ads) {
-    return false ; 
+    return false ;
   }
 
   public function deleteAd(string $uuids) {
-    return false ; 
+    return false ;
   }
 
 
@@ -200,7 +193,7 @@ class SolSearch implements SolSearchInterface {
       $location = "ST_GeomFromText('$ad->location')";
       $query = "REPLACE INTO ads
         (`uuid`, `type`, `title`, `body`, `keywords`, `image_path`, `directexchange`, `indirectexchange`, `money`, `scope`, `location`, `expires`, `path`, `client_id`, `lang`)
-        VALUES ('$ad->uuid', '$type', '$ad->title', '$ad->body', '$ad->keywords', '$ad->image', '$ad->directexchange', '$ad->indirectexchange', '$ad->money', '$ad->scope', $location, '$ad->expires', '$ad->path', '$this->groupId', '$ad->lang')";
+        VALUES ('$ad->uuid', '$type', '$ad->title', '$ad->body', '$ad->keywords', '$ad->image', $ad->directexchange, $ad->indirectexchange, $ad->money, '$ad->scope', $location, '$ad->expires', '$ad->path', ".$this->group->id.", '$ad->lang')";
       $result = $this->dbQuery($query);
     }
     return is_object($result) && !mysql_error($result);
@@ -210,16 +203,17 @@ class SolSearch implements SolSearchInterface {
     try {
       $this->log($sqlString);
       $result = $this->connection->query($sqlString);
-      return $result; 
+      return $result;
     }
     // @todo  does this need to be logged to file?
     catch(PDOException $e) {
-      $this->log('Error: ', $e);
+      $this->log('Error: ', $e->getMessage());
     }
   }
 
   // @todo replace this with proper logging
   public function log($message) {
+    if (!is_string($message))print_r(array_slice(debug_backtrace(), 0, 3));
     fputs($this->logFileHandle, $message . "\n");
   }
 
