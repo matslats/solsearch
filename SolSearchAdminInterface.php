@@ -6,31 +6,35 @@ require_once 'SolSearchInterface.php';
  * Interface for SolSearch, to be connected to a REST API
  */
 
-interface SolSearchAdminInterface extends SolsearchInterface{
+interface SolSearchAdminInterface extends SolSearchInterface {
 
   /**
-   * Add a new group to the database. This must be done before any
-   * of that groups ads are added. Admin only.
+   * Add a Group
    *
    * @param string $url
    * @param string $name
    *
-   * @return string
-   *   The new API Key
+   * @return array Associative array of
+   *   'id' UUID for the new client
+   *   'key' API key for the new client
    */
-  public function insertClient($url, $name);
+  public function insertGroup($url, $name);
 
   /**
-   * Admin only.  Remove a client and all its ads from the db.
+   * Remove a group and all its ads from the db.
+   */
+  public function deleteGroup($id);
+
+  /**
+   * Update a group's name or url
+   */
+  public function updateGroup($id, $url, $name);
+
+  /**
+   * Admin only. Show a list of all the groups
    *
-   * @param string $apikey
-   * @param string $url
+   * @return array
    */
-  public function deleteClient($apikey);
-
-  /**
-   * Admin only. Update a client's name or url
-   */
-  public function updateClient($id, $url, $name);
+  public function listGroups();
 
 }

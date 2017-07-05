@@ -36,25 +36,43 @@ class SolSearch implements SolSearchInterface {
   private $connection;
 
   /**
-   * the type, e.g. offer, want
+   * File handle to logfile
+   * @var string
    */
-  private $type;
+  private $logFileHandle;
 
-  function __construct($connection, $client, $type) {
+  function __construct($connection, $logFileHandle) {
     $this->connection = $connection;
-    $this->groupId = $client->id;
-    $this->type = $type;
+    $this->logFileHandle = $logFileHandle;
   }
 
+
+  /**
+   * Get one ad. Returns ad object or null
+   */
+
+  public function getAd($uuid) {
+    $query = "SELECT * FROM ads WHERE uuid = '" . $uuid . "';";
+
+    $result = $this->dbQuery($query);
+
+    if ($result === false) {
+        return false; 
+    } else {
+        $row = $result->fetch();
+        return $row;
+    }
+  }
 
   /**
    * Filter the database and return the results
    *
    * @note Not currently possible to order by distance. Radius uses a box not a circle.
    */
-  public function filter($type, $params, $offset = 0, $limit = 10, $sort_by = 'expires,asc') {
+  public function searchAds($type, $params, $offset = 0, $limit = 10, $sort_by = 'expires,asc') {
     $query = "SELECT a.id, c.name,  c.url, type, lang, title, body, keywords, directexchange, indirectexchange, money, scope, uuid, expires, path, client_id, X(location) as lon, Y(location) as lat"
-        . " FROM ads a LEFT JOIN clients c ON a.client_id = c.id WHERE type = '$type'";
+        . " FROM ads a, clients c WHERE a.client_id = c.id AND type = '$type'";
+    
     if (!empty($params['fragment'])) {
       $like = '%'. $params['fragment'] .'%';
       $query .= " AND (title LIKE '$like' OR body LIKE '$like' or keywords LIKE '$like') ";
@@ -118,10 +136,12 @@ class SolSearch implements SolSearchInterface {
     if ($limit && $offset) {
       $query .= ", $offset";
     }
+
     if ($recalc) {
       $result = $this->dbQuery($query);
     }
     $items = [];
+
     while ($row = mysql_fetch_object($result)) {
       $row->url = 'http://'.$row->url.'/'.$row->path;
       unset($row->path);
@@ -134,12 +154,34 @@ class SolSearch implements SolSearchInterface {
   /**
    * Delete many ads from the database
    */
-  public function delete(array $uuids) {
+  public function bulkDeleteAds(array $uuids) {
     foreach ($uuids as $uuid) {
       $in[] = "'".$uuid."'";
     }
     $this->dbQuery("DELETE FROM ads WHERE uuid IN (".implode(',', $in).")");
   }
+
+  public function updateAd(SolAd $ad) {
+    return false ; 
+  }
+
+  public function bulkUpdateAds(array $ads) {
+    return false ; 
+  }
+
+  public function insertAd(SolAd $ad) {
+    return false ; 
+  }
+
+
+  public function bulkInsertAds(array $ads) {
+    return false ; 
+  }
+
+  public function deleteAd(string $uuids) {
+    return false ; 
+  }
+
 
   /**
    * Update a single ad
@@ -164,82 +206,21 @@ class SolSearch implements SolSearchInterface {
     return is_object($result) && !mysql_error($result);
   }
 
-  /**
-   * Check all the fields have good data
-   *
-   * @param \Drupal\smallads_index\SolAd $ad
-   *
-   * @throws Exception
-   *
-   */
-  private function validateSolAd(stdClass $ad) {
-    //check all the fields exist
-    $fields = ['uuid', 'title', 'body', 'keywords', 'created', 'expires', 'location', 'directexchange', 'indirectexchange', 'money', 'path', 'lang'];
-    foreach ($fields as $fieldname) {
-      if (!isset($ad->{$fieldname})) {
-        throw new \Exception("$fieldname not found on ad");
-      }
-    }
-    //
-    //
-    //check the format of UUID - what is the name of that format?
-
-    //$title is max 100 chars
-    if (strlen($ad->title) > 128) {
-      //We don't have a way to send warnings.
-      $ad->title = substr($ad->title, 0, 128);
-    }
-    //sanitise the body
-
-
-    if (preg_match('/POINT ?\((-?[0-9.]+) (-?[0-9.]+)\)/', $ad->location, $matches)) {
-      if ($matches[1] > 180 or $matches[1] < -180) {
-        throw new exception('Longitude out of range. should be -180 < 180');
-      }
-      if ($matches[2] > 90 or $matches[2] < -90) {
-        throw new exception('Latitude out of range. should be -90 < 90');
-      }
-    }
-    else {
-      throw new exception('Location should be formatted as POINT(0.0 0.0); got '.$ad->location);
-    }
-    if (!is_numeric($ad->scope) or $ad->scope < 3 or $ad->scope > 4) {
-      throw new exception('Scope out of range. should be a number from 3-4: '.$ad->scope);
-    }
-    $limit = strtotime('+1 year');
-    if ($ad->expires > $limit + 86400) {//a year and a day
-      $ad->expires = strtotime('+1 year');
-      $messages[] = 'Expiry has been curtailed to 1 year hence';
-    }
-
-    //put in the default group
-    $ad->group_id = $this->groupId;
-    $ad->type = $this->type;
-  }
-
-  /**
-   *
-   * @param string $sql_string
-   * @return mysql_result
-   */
-  protected function dbQuery($sql_string) {
+  protected function dbQuery($sqlString) {
     try {
-      $this->log($sql_string);
-      $result = mysql_query($sql_string, $this->connection);
-      if ($message = mysql_error()) {
-        $this->log('Error:'. $message);
-      }
-      return $result;
+      $this->log($sqlString);
+      $result = $this->connection->query($sqlString);
+      return $result; 
     }
-    catch(\Exception $e) {
-      file_put_contents('debug.msg', $e->getMessage());
-      throw $e;
+    // @todo  does this need to be logged to file?
+    catch(PDOException $e) {
+      $this->log('Error: ', $e);
     }
   }
 
+  // @todo replace this with proper logging
   public function log($message) {
-    $query = "INSERT INTO log (message, client_id) VALUES ('".addslashes(print_r($message, 1))."', $this->groupId)";
-    mysql_query($query, $this->connection);
+    fputs($this->logFileHandle, $message . "\n");
   }
 
 }

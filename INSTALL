@@ -1,0 +1,32 @@
+Linux Setup Instructions
+------------------------
+
+Install required services:
+
+- PHP
+- Database (mysql or postgres)
+- PHP PDO:
+-- sudo apt-get install php5-mysql 
+
+Install PHP Depedencies:
+
+- Install Composer if you don't have it:
+- https://getcomposer.org/doc/00-intro.md
+- Run the install command for composer. If you have a local composer installation this is:
+-- php composer.phar install
+- If you have a global install of composer you can do:
+-- composer install
+
+Setup Database:
+
+- Import database structure, e.g. mysql -u user -p < db.sql
+
+Configure SolSearch:
+
+- Copy config.ini.example to config.ini
+
+- Setup DB:
+-- Edit database connection for your database
+
+- Setup Logging
+-- Enter logfile with absolute path

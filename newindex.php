@@ -7,29 +7,27 @@ require 'SolSearch.php';
 
 // Instatiate PDO database connection
 
-$config = parse_ini_file('config.ini', true);
-$dbh = connectPdo($config['db']);
-
-$logFileHandle = fopen($config['logging']['logfile'], 'a');
-
-$app = new \Slim\App();
+$dbConfig = parse_ini_file('db.ini');
+$dbh = connectPdo($dbConfig);
 
 // Instantiate the SolSearch service
-$solSearch = new SolSearch($dbh, $logFileHandle);
 
-$container = $app->getContainer() ;
-$container['solSearch'] = $solSearch ; 
-  
-// Get one ad
-$app->get('/ad/{adId}', function (Request $request, Response $response, $args) {
-   return $response->withJson($this->get('solSearch')->getAd($args['adId'])) ; 
-});
+$solSearch = new SolSearch($dbh, "", "");
 
-// Search for ads
-$app->get('/searchAd', function (Request $request, Response $response, $args) {
-   $params = $request->getQueryParams();
-   $type = $params['type'];
-   return $response->withJson($this->get('solSearch')->searchAds($type));
+// Define API
+
+$app = new \Slim\App;
+
+// READING
+
+// Clients Endpoint
+// If client ID specified, then get just that client, otherwise return all clients
+$app->get('/clients[/{clientId}]', function (Request $request, Response $response, $args) {
+    if (isset($args['clientId'])) {
+        return $response->withJson(array('name' => 'yes', 'foo' => 40));
+    } else {
+        return $response->withJson(array('name' => 'no', 'foo' => 40));
+    }
 });
 
 // Start API

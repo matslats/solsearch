@@ -1,0 +1,13 @@
+.idea
+*.iml
+bin
+lib
+local
+*.pyc
+*.swp
+vendor
+composer.lock
+composer.phar
+config.ini
+james.config.ini
+error.log

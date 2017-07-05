@@ -13,48 +13,103 @@ interface SolSearchInterface {
   const SCOPE_PUBLIC = 3;
 
   /**
-   * Filter the database and return the results
+   * List and search ads
    *
    * @param string $type
-   *   One of a few mutually exlcusive types e.g. offer/want
+   *   Ad type. See data type docs. NULL or '0' means 'all'.
    * @param array $params
-   *   the filters to apply to the search, namely
+   *   Associative array of the filters to apply to the search, namely
    * - bool local: true to include only local results
    * - floats circle: the lat, the lon and the km radius to search
    * - string text: a string to search for in title, description & keywords
    * - bool directexchange: TRUE to exclude transactionts that don't allow barter
    * - bool indirectexchange: TRUE to exclude transactions that don't allow ccs
-   * - bool money: TRUE to exclude transactions that don't allow money
+   * - bool money: TRUE to exclude transactions that don't allow moneyi
+   * 
+   * @todo HOW ARE THESE APPLIED IF MORE THAN ONE IS SPECIFIED?
+   * 
    * @param int $limit
    * @param int $offset
    * @param string $sort_by
-   * @param string $dir
    *
    * @return array
-   *   a list of the items
+   *   A list of SolAd objects.
    */
-  public function filter($type, $params, $offset = 0, $limit = 10, $sort_by = 'expires,asc');
+  public function searchAds($type, $params, $offset = 0, $limit = 10, $sort_by = 'expires,asc');
 
   /**
-   * Update one or more ads.
+   * Get one ad by UUID
+   * 
+   * @param string $uuid
    *
-   * @param string $type
-   *   The 'type' property
-   * @param stdClass[] $ads
+   * @return SolAd returns one SolAd object, or NULL
+   */
+
+  public function getAd($uuid);
+
+  /**
+   * Update one ad.
+   *
+   * @param SolAd $ads
    *
    * @return bool
    *   TRUE if the update was successful
    */
-  public function upsert($type, array $ads);
+  public function updateAd(SolAd $ad);
+
 
   /**
+   * Update many ads
+   *
+   * $param array $ads An array of SolAd objects
+   *
+   * @return bool
+   *   TRUE if the update was successful
+   */
+   public function bulkUpdateAds(array $ads);
+
+
+  /**
+   * Insert one ad.
+   *
+   * @param SolAd $ads
+   *
+   * @return bool
+   *   TRUE if the insert was successful
+   */
+  public function insertAd(SolAd $ad);
+
+
+  /**
+   * Insert many ads
+   *
+   * $param array $ads An array of SolAd objects
+   *
+   * @return bool
+   *   TRUE if the inserts were all successful. Fails and does not insert anything if ANY error, does not do partial insert
+   */
+   public function bulkInsertAds(array $ads);
+
+  /**
+   * Delete an ad.
+   *
+   * @param string[] $uuids
+   *
+   * @return bool
+   *   TRUE if the delete was successful
+   */
+  public function deleteAd(string $uuid);
+
+  /**
+   * @param SolAd $ads
    * Delete one or more ads.
    *
    * @param string[] $uuids
    *
    * @return bool
-   *   TRUE if the update was successful
+   *   TRUE if *ALL* deletes were successful, does NOT do partial delete if failure of any single deletion
    */
-  public function delete(array $uuids);
+  public function bulkDeleteAds(array $uuids);
+
 
 }
