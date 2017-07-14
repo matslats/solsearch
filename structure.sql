@@ -21,6 +21,7 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE IF NOT EXISTS `ads` (
+  `uuid` varchar(42) NOT NULL,
   `id` int(7) NOT NULL,
   `type` varchar(12) NOT NULL,
   `title` tinytext NOT NULL,
@@ -30,12 +31,11 @@ CREATE TABLE IF NOT EXISTS `ads` (
   `indirectexchange` tinyint(1) NOT NULL,
   `money` tinyint(1) NOT NULL,
   `scope` tinyint(1) NOT NULL DEFAULT '0',
-  `uuid` varchar(42) NOT NULL,
   `expires` int(14) NOT NULL COMMENT 'unixtime',
   `path` varchar(32) NOT NULL,
   `client_id` int(11) NOT NULL,
   `location` point NOT NULL,
-  `image_path` varchar(128) DEFAULT NULL,
+  `image` varchar(128) DEFAULT NULL,
   `lang` varchar(2) NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
@@ -73,17 +73,19 @@ CREATE TABLE IF NOT EXISTS `log` (
 -- Indexes for table `ads`
 --
 ALTER TABLE `ads`
-  ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uuid` (`uuid`),
+  ADD UNIQUE KEY `id` (`id`,`client_id`),
   ADD KEY `location` (`location`(25)),
   ADD KEY `location_2` (`location`(25));
+
 
 --
 -- Indexes for table `clients`
 --
 ALTER TABLE `clients`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `apikey` (`apikey`);
+  ADD UNIQUE KEY `apikey` (`apikey`),
+  ADD UNIQUE KEY `url` (`url`);
 
 --
 -- Indexes for table `log`
@@ -95,11 +97,6 @@ ALTER TABLE `log`
 -- AUTO_INCREMENT for dumped tables
 --
 
---
--- AUTO_INCREMENT for table `ads`
---
-ALTER TABLE `ads`
-  MODIFY `id` int(7) NOT NULL AUTO_INCREMENT;
 --
 -- AUTO_INCREMENT for table `clients`
 --

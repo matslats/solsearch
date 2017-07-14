@@ -81,16 +81,6 @@ interface SolSearchInterface {
 
 
   /**
-   * Insert many ads
-   *
-   * $param array $ads An array of SolAd objects
-   *
-   * @return bool
-   *   TRUE if the inserts were all successful. Fails and does not insert anything if ANY error, does not do partial insert
-   */
-   public function bulkInsertAds(array $ads);
-
-  /**
    * Delete an ad.
    *
    * @param string $uuid
@@ -115,6 +105,6 @@ interface SolSearchInterface {
   /**
    * Allow a group to remove itself
    */
-  public function deleteGroup($id);
+  public function bye();
 
 }

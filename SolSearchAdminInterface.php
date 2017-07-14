@@ -32,4 +32,13 @@ interface SolSearchAdminInterface extends SolSearchInterface {
    */
   public function listGroups();
 
+  /**
+   * Allow admin to delete any group
+   *
+   * @param int $id
+   *
+   * @note this overrides the ability of a logged in client to delete themselves.
+   */
+  public function deleteGroup($id);
+
 }

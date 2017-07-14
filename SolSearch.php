@@ -1,25 +1,6 @@
 <?php
-//require_once 'SolSearchInterface.php';
+require_once 'SolSearchInterface.php';
 
-/**
- * Example
-{
-  "uuid": "9328cchql09238374ncis73",
-  "title": "Mind adventures",
-  "body": "litle bit of escaped <strong>html</strong>",
-  "keywords":  "blah, blue, blow",
-  "location": "60,1"
-  "scope": "3"
-  "path": "node/99",
-  "directexchange": "true",
-  "indirectexchange": "true",
-  "money": "false",
-  "expires": 15000000000,
-  "type":"offer",
-  "lang":"",
-  "url": "http:\/\/matslats.net\/ad\/38"
-}
- */
 
 class SolSearch implements SolSearchInterface {
 
@@ -29,33 +10,19 @@ class SolSearch implements SolSearchInterface {
    */
   private $group;
 
-  /**
-   * The database connection
-   * @var Resource
-   */
-  private $connection;
-
-  /**
-   * File handle to logfile
-   * @var string
-   */
-  private $logFileHandle;
-
-  function __construct($connection, $logFileHandle, $group) {
-    $this->connection = $connection;
-    $this->logFileHandle = $logFileHandle;
+  function __construct($group) {
     $this->group = $group;
   }
 
 
   /**
    * Get one ad. Returns ad object or null
+   * @note Not currently used for anything
    */
-
   public function getAd($uuid) {
-    $query = "SELECT a.id, c.name,  c.url, type, lang, title, body, keywords, directexchange, indirectexchange, money, scope, uuid, expires, path, client_id, X(location) as lon, Y(location) as lat"
+    $query = "SELECT a.id, c.name,  c.url, type, lang, title, body, keywords, directexchange, indirectexchange, money, scope, uuid, expires, path, client_id, X(location) as lon, Y(location) as lat, image "
        . " FROM ads a LEFT JOIN clients c ON a.client_id = c.id WHERE uuid = '" . $uuid . "'";
-    $result = $this->dbQuery($query);
+    $result = dbQuery($query);
     return $result ? $result->fetchObject() : FALSE;
   }
 
@@ -65,7 +32,7 @@ class SolSearch implements SolSearchInterface {
    * @note Not currently possible to order by distance. Radius uses a box not a circle.
    */
   public function searchAds($type, $params, $offset = 0, $limit = 10, $sort_by = 'expires,asc') {
-    $query = "SELECT a.id, c.name,  c.url, type, lang, title, body, keywords, directexchange, indirectexchange, money, scope, uuid, expires, path, client_id, X(location) as lon, Y(location) as lat"
+    $query = "SELECT a.id, c.name,  c.url, type, lang, title, body, keywords, directexchange, indirectexchange, money, scope, uuid, expires, path, client_id, X(location) as lon, Y(location) as lat, image "
         . " FROM ads a LEFT JOIN clients c ON a.client_id = c.id WHERE a.client_id = c.id AND type = '$type'";
 
     if (!empty($params['fragment'])) {
@@ -109,7 +76,7 @@ class SolSearch implements SolSearchInterface {
     if (isset($params['lang'])) {
       $query .= ' AND lang = '.$params['lang'];
     }
-    $result = $this->dbQuery($query);
+    $result = dbQuery($query);
     $total = $result->rowCount();
 
     //Sorting
@@ -132,7 +99,7 @@ class SolSearch implements SolSearchInterface {
     }
 
     if ($recalc) {
-      $result = $this->dbQuery($query);
+      $result = dbQuery($query);
     }
     $items = [];
 
@@ -145,53 +112,34 @@ class SolSearch implements SolSearchInterface {
   }
 
   public function updateAd(SolAd $ad) {
-    return $this->upsert($ad->type, [$ad]);
+    return $ad->update();
   }
 
+
   public function bulkUpdateAds(array $ads) {
-    return $this->upsert($ad->type, [$ads]);
+    foreach ($ads as $ad) {
+      if ($this->exists($ad->id)) {
+        $this->updateAd($ad);
+      }
+      else {
+         $this->insertAd($ad);
+      }
+    }
   }
 
   public function insertAd(SolAd $ad) {
-    return $this->upsert($ad->type, [$ad]);
+    return $ad->insert();
   }
 
-  public function bulkInsertAds(array $ads) {
-    return $this->upsert($ad->type, [$ads]);
+  public function deleteAd($id) {
+    $this->bulkDeleteAds([$id]);
   }
 
-  public function deleteAd($uuid) {
-    $this->bulkDeleteAds([$uuid]);
-  }
-
-  public function bulkDeleteAds(array $uuids) {
-    foreach ($uuids as $uuid) {
-      $in[] = "'".$uuid."'";
+  public function bulkDeleteAds(array $ids) {
+    foreach ($ids as $id) {
+      $in[] = "'".$id."'";
     }
-    $this->dbQuery("DELETE FROM ads WHERE uuid IN (".implode(',', $in).")");
-  }
-
-  /**
-   * Update a single ad
-   *
-   * @param string $type
-   * @param stdClass[] $ads
-   *
-   * @return bool
-   *   TRUE if the operation was successful.
-   */
-  public function upsert($type, array $ads) {
-    //todo check the uuid and either insert or update
-    foreach ($ads as $ad) {
-      $this->validateSolAd($ad);
-      //list($lat, $lon) = explode(',', $ad->location);
-      $location = "ST_GeomFromText('$ad->location')";
-      $query = "REPLACE INTO ads
-        (`uuid`, `type`, `title`, `body`, `keywords`, `image_path`, `directexchange`, `indirectexchange`, `money`, `scope`, `location`, `expires`, `path`, `client_id`, `lang`)
-        VALUES ('$ad->uuid', '$type', '$ad->title', '$ad->body', '$ad->keywords', '$ad->image', $ad->directexchange, $ad->indirectexchange, $ad->money, '$ad->scope', $location, '$ad->expires', '$ad->path', ".$this->group->id.", '$ad->lang')";
-      $result = $this->dbQuery($query);
-    }
-    return is_object($result) && !mysql_error($result);
+    dbQuery("DELETE FROM ads WHERE client_id = ".$this->group->id." AND id IN (".implode(',', $in).")");
   }
 
   /**
@@ -199,28 +147,18 @@ class SolSearch implements SolSearchInterface {
    *
    * @param string $apikey
    */
-  public function deleteGroup() {
+  public function bye() {
     // Only possible to delete your own group.
     $id = $this->group->id;
-    $this->dbQuery("DELETE FROM clients WHERE id = '$id'");
-    $this->dbQuery("DELETE FROM ads WHERE client_id = '$id'");
+    dbQuery("DELETE FROM clients WHERE id = '$id'");
+    dbQuery("DELETE FROM ads WHERE client_id = '$id'");
   }
 
-  protected function dbQuery($sqlString) {
-    try {
-      $this->log($sqlString);
-      return $this->connection->query($sqlString);
+  public function exists($id) {
+    $query = "SELECT uuid FROM ads WHERE client_id = ".$this->group->id." AND id = $id";
+    if ($result = dbQuery($query)) {
+      return $result->rowCount();
     }
-    // @todo  does this need to be logged to file?
-    catch(PDOException $e) {
-      $this->log('Error: ', $e->getMessage());
-    }
-  }
-
-  // @todo replace this with proper logging
-  public function log($message) {
-    if (!is_string($message))print_r(array_slice(debug_backtrace(), 0, 3));
-    fputs($this->logFileHandle, $message . "\n");
   }
 
 }

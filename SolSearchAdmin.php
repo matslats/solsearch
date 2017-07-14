@@ -3,14 +3,6 @@
 require 'SolSearchAdminInterface.php';
 require 'SolSearch.php';
 
-/*
- * <b>Fatal error</b>:  Class SolSearchAdmin contains 4 abstract methods and
- * must therefore be declared abstract or implement the remaining methods (
- * SolSearchAdminInterface::insertGroup,
- * SolSearchAdminInterface::deleteGroup,
- * SolSearchAdminInterface::updateGroup
- */
-
 class SolSearchAdmin extends Solsearch implements SolSearchAdminInterface {
 
   /**
@@ -21,9 +13,16 @@ class SolSearchAdmin extends Solsearch implements SolSearchAdminInterface {
    * @param string $name
    */
   public function insertGroup($url, $name) {
-    $apikey = $this->makeAPIkey();
-    $result = $this->dbQuery("INSERT INTO clients (apikey, name, url) VALUES ('$apikey', '$name', '$url')");
-    return $apikey;
+    // For testing we'll check if the client already exists.
+    $result = dbQuery("SELECT apikey FROM clients WHERE url = '$url'");
+    if ($result->rowCount()) {
+      $apikey = $result->fetchObject()->apikey;
+    }
+    else {
+      $apikey = $this->makeAPIkey();
+      $result = dbQuery("INSERT INTO clients (apikey, name, url) VALUES ('$apikey', '$name', '$url')");
+    }
+    return ['apikey' => $apikey];
   }
 
   /**
@@ -31,12 +30,12 @@ class SolSearchAdmin extends Solsearch implements SolSearchAdminInterface {
    */
   public function updateGroup($id, $name, $url) {
     $query = "UPDATE clients SET url = '$url', name = '$name' WHERE id = '$id'";
-    $this->dbQuery($query);
+    dbQuery($query);
   }
 
 
   public function listGroups() {
-    $result = $this->dbQuery(
+    $result = dbQuery(
       "SELECT c.id, c.name, c.url FROM clients c LEFT JOIN ads a ON c.id = a.client_id GROUP BY c.id, a.type"
     );
     while ($item = $result->fetchObject()) {
@@ -49,8 +48,14 @@ class SolSearchAdmin extends Solsearch implements SolSearchAdminInterface {
     $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
     $randstring = '';
     for ($i=0; $i<12; $i++) {
-      $randstring .= $characters[rand(0, strlen($characters))];
+      $randstring .= $characters[rand(0, strlen($characters)-1)];
     }
     return $randstring;
+  }
+
+
+  public function deleteGroup($id) {
+    $dbQuery("DELETE FROM clients WHERE id = '$id'");
+    $dbQuery("DELETE FROM ads WHERE client_id = '$id'");
   }
 }
